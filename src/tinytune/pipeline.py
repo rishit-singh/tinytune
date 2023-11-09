@@ -8,7 +8,7 @@ class Pipeline:
         self.Jobs: list[PromptJob] = list[PromptJob]()
         self.Results: list[Any] = list[Any]()
         self.GPT: GPTContext = gpt
-        self.Running: bool = False 
+        self.IsRunning: bool = False 
 
     def AddJob(self, job: Callable[[list[Any]], Any]) -> Any:
         self.Jobs.append(job)
@@ -19,7 +19,7 @@ class Pipeline:
         job: type = jobType(self.GPT)
         self.Jobs.append(job)
 
-    def Run(self, onError: Callable[[BaseException], Any] = None) -> bool:
+    def Run(self, onError: Callable[[BaseException], Any] = None) -> list[dict[str, str]]:
         prevResult: Any = None
 
         for job in self.Jobs:
@@ -32,7 +32,7 @@ class Pipeline:
                     onError(e)
                 raise e
 
-        return True
+        return prevResult
     
     def Save(self, promptFile: str = "prompts.json"):
         self.GPT.Save(promptFile)
