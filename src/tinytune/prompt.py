@@ -1,7 +1,6 @@
 from typing import Any
-from peregrinegpt.gptcontext import GPTContext
-from peregrinegpt.web.scraping import DataScraper
 from types import FunctionType
+from tinytune.gptcontext import GPTContext
 
 class OpenAIFunction:
     def __init__(self, func: FunctionType) -> None:

@@ -29,7 +29,6 @@ class GPTContext:
     
     def AddPrompt(self, prompt: dict, onError: Callable[[KeyError], Any] = None) -> bool:
         try:
-    
             ValidatePrompt(prompt)
             self.Messages.append(prompt)
 
