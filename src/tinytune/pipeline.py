@@ -8,7 +8,7 @@ class Pipeline:
         self.Jobs: list[PromptJob] = list[PromptJob]()
         self.Results: list[Any] = list[Any]()
         self.GPT: GPTContext = gpt
-        self.Running: bool = True
+        self.Running: bool = False 
 
     def AddJob(self, job: Callable[[list[Any]], Any]) -> Any:
         self.Jobs.append(job)
