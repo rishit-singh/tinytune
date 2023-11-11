@@ -28,10 +28,10 @@ class PromptJob:
         self.GPT: GPTContext = gpt
         pass
 
-    def Run(self, args: list[Any] = None) -> Any:
+    def Run(self, gpt: GPTContext,args: list[Any] = None) -> Any:
         return
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.Run(args[0])
+        return self.Run(args[0], args[1])
  
  

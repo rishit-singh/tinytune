@@ -10,7 +10,7 @@ class Pipeline:
         self.GPT: GPTContext = gpt
         self.IsRunning: bool = False 
 
-    def AddJob(self, job: Callable[[list[Any]], Any]) -> Any:
+    def AddJob(self, job: Callable[[GPTContext, list[Any]], Any]) -> Any:
         self.Jobs.append(job)
 
         return self 
