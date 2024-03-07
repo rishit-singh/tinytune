@@ -20,7 +20,7 @@ class LLMContext[MessageType]:
         self.OnGenerateCallback: Callable[[None[list[str]]]] = lambda tokens : None 
 
     def Top(self) -> Message:
-        return self.Messages[len(self.Messages)]
+        return self.Messages[len(self.Messages) - 1]
 
     def Prompt(self, message: Message):
         self.MessageQueue.append(message)

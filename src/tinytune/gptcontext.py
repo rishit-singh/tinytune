@@ -1,13 +1,30 @@
 import openai
 import json
 from tinytune.util.prompt import ValidatePrompt
+from tinytune.llmcontext import LLMContext, Model
 from typing import Callable, Any
 
-class GPTContext:    
+class GPTMessage:
+    __slots__ = ("Role", "Content")
+
+    def __init__(self, role: str, content: str):
+        self.Role = role
+        self.Content = content
+    
+    def ToDict(self):
+        return {
+            "role": self.Role,
+            "content": self.Content
+        } 
+
+class GPTContext(LLMContext[GPTMessage]):
     def __init__(self, model: str, apiKey: str, promptFile: str = None):
-        self.Model: str = model
+        super().__init__(Model("openai", model))
+
         self.APIKey: str = apiKey
-        self.Messages: list[dict[str]] = []
+        self.Messages: list[GPTMessage] = []
+        self.QueuePointer: int = 0
+
         openai.api_key = self.APIKey
 
     def LoadMessages(self, promptFile: str = "prompts.json"):
@@ -51,11 +68,32 @@ class GPTContext:
 
         return dict(openai.ChatCompletion.create(model=self.Model, messages=_messages)["choices"][0]["message"])
 
-    def Prompt(self, role: str, message: str) -> list[dict[str, str]]:
-        self.Messages.append(dict({ "role": role, "content": message }))
-        self.Messages.append(self.Send(self.Messages))
+    def Prompt(self, message: GPTMessage):
+        self.MessageQueue.append(message)
 
-        return self.Messages
-    
-    def Update(self):
-        self.Send(self.Messages)
+        return self
+
+    def Run(self, stream: bool = False):
+        while (self.QueuePointer < len(self.MessageQueue)):
+            self.Messages.append(self.MessageQueue[self.QueuePointer])
+
+            response = openai.chat.completions.create(model=self.Model.Name, 
+                                           messages=[ message.ToDict() for message in self.Messages ] + [self.MessageQueue[self.QueuePointer].ToDict()],
+                                           temperature=0,
+                                           stream=stream)
+            
+
+            self.Messages.append(GPTMessage("assistant", ""))    
+        
+            if (stream):
+                for chunk in response:
+                    content = chunk.choices[0].delta.content
+                    if (content != None):
+                        self.Messages[len(self.Messages) - 1].Content += content 
+                    # print(chunk)
+                    self.OnGenerateCallback(content)
+                
+            
+            self.QueuePointer += 1
+
+        return self
