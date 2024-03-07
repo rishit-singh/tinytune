@@ -36,7 +36,7 @@ class GPTContext(LLMContext[GPTMessage]):
     def Save(self, promptFile: str = "prompts.json") -> bool: 
         try:
             with open(promptFile, "w") as fp:
-                json.dump(self.Messages, fp, indent=2)
+                json.dump([ message.ToDict() for message in self.Messages ], fp, indent=2)
                 
         except:
             print("An error occured in saving messages.")

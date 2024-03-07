@@ -1,7 +1,6 @@
 import os
 from tinytune.gptcontext import GPTContext, GPTMessage, Model
 
-
 def Main():
     context = GPTContext("gpt-4-0125-preview", os.getenv("OPENAI_KEY"))
 
@@ -16,6 +15,10 @@ def Main():
 
     inp = input(">  ")
     while (inp != "exit"):
+        if (inp == "save"):
+            context.Save()
+            continue
+
         (context.Prompt(GPTMessage("user", inp))
                 .Run(True))
         inp = input(">  ")
