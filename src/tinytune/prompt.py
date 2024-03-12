@@ -1,37 +1,25 @@
-from typing import Any
+from typing import Any, Callable
 from types import FunctionType
-from tinytune.gptcontext import GPTContext
-
-class OpenAIFunction:
-    def __init__(self, func: FunctionType) -> None:
-        self.Function = func
-
-    def GetDefinition(self):
-        params: dict = self.Function.__annotations__
-
-        return dict({
-            "name": self.Function.__name__,
-            "parameters": params
-        })
-
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        pass
+from tinytune.llmcontext import LLMContext
 
 class Prompt:
     def __init__(self, messages: list[dict[str, str]], functions: list[FunctionType] = None) -> None:
         self.Messages: list[dict[str, str]] = messages
         self.Function: list[FunctionType] = functions
 
-
 class PromptJob:
-    def __init__(self, gpt: GPTContext):
-        self.GPT: GPTContext = gpt
-        pass
+    def __init__(self, id: str, llm: LLMContext, onError: Callable[[None, Exception]] = None):
+        self.ID: str = id
+        self.LLM: LLMContext = llm
+        self.OnError: Callable[[None, Exception]] = onError
 
-    def Run(self, gpt: GPTContext,args: list[Any] = None) -> Any:
-        return
+    def Run(self, *args: Any) -> Any:
+        if (isinstance(args[0], LLMContext)):
+            self.LLM = args[0]
+
+        return None
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.Run(args[0], args[1])
- 
- 
+        return self.Run(args)
+
+

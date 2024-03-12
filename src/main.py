@@ -1,5 +1,8 @@
 import os
 from tinytune.gptcontext import GPTContext, GPTMessage, Model
+from tinytune.pipeline import Pipeline, PromptJob
+
+
 
 def Main():
     context = GPTContext("gpt-4-0125-preview", os.getenv("OPENAI_KEY"))
@@ -10,17 +13,24 @@ def Main():
         else:   
             print()
 
-
     context.OnGenerateCallback = Callback
 
-    inp = input(">  ")
-    while (inp != "exit"):
-        if (inp == "save"):
-            context.Save()
-            continue
+    pipeline: Pipeline = Pipeline()
 
-        (context.Prompt(GPTMessage("user", inp))
-                .Run(True))
-        inp = input(">  ")
+    # inp = input(">  ")
+
+    # while (inp != "exit"):
+    #     if (inp == "save"):
+    #         context.Save()
+            
+    #         inp = input(">  ")
+            
+    #         continue
+
+    #     (context.Prompt(GPTMessage("user", inp))
+    #             .Run(True))
+
+    #     inp = input(">  ")
+
 
 Main()

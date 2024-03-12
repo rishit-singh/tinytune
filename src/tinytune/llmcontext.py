@@ -1,4 +1,5 @@
-from typing import Callable
+from typing import Callable, Any
+import json
 
 class Message:
     __slots__ = ("Role", "Content")
@@ -22,8 +23,19 @@ class LLMContext[MessageType]:
     def Top(self) -> Message:
         return self.Messages[len(self.Messages) - 1]
 
-    def Prompt(self, message: Message):
+    def Prompt(self, message: Message) -> Any:
         self.MessageQueue.append(message)
+        return self
+
+    def Save(self, promptFile: str = "prompts.json") -> Any: 
+        try:
+            with open(promptFile, "w") as fp:
+                json.dump([ message.ToDict() for message in self.Messages ], fp, indent=2)
+                
+        except Exception as e:
+            print(f"An error occured in saving messages: {e.args[0]}")
+            return self 
+
         return self
 
     async def Run(self, stream: bool = False):   
