@@ -1,4 +1,5 @@
 from typing import Callable, Any
+from dataclasses import dataclass
 import json
 
 class Message:
@@ -7,7 +8,13 @@ class Message:
     def __init__(self, role: str, content: str):
         self.Role = role
         self.Content = content
-        
+
+    def ToDict(self):
+        return {
+            "role": self.Role,
+            "content": self.Content
+        }
+     
 class Model:
     def __init__(self, owner: str, name: str):
         self.Owner: str = owner
@@ -18,12 +25,12 @@ class LLMContext[MessageType]:
         self.Messages: list[MessageType] = [] 
         self.MessageQueue: list[MessageType] = []
         self.Model: Model = model
-        self.OnGenerateCallback: Callable[[None[list[str]]]] = lambda tokens : None 
+        self.OnGenerateCallback: Callable[[list[str]], None] = lambda tokens : None 
 
-    def Top(self) -> Message:
+    def Top(self) -> MessageType:
         return self.Messages[len(self.Messages) - 1]
 
-    def Prompt(self, message: Message) -> Any:
+    def Prompt(self, message: MessageType) -> Any:
         self.MessageQueue.append(message)
         return self
 
@@ -38,9 +45,7 @@ class LLMContext[MessageType]:
 
         return self
 
-    async def Run(self, stream: bool = False):   
-        while (len(self.MessageQueue) > 0):
-            pass
-
+    def Run(self, *args, **kwargs):   
+        pass
         return self
 

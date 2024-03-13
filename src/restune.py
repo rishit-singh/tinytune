@@ -1,8 +1,10 @@
 import os
+
+from tinytune.llmcontext import Message
 from tinytune.gptcontext import GPTContext, GPTMessage, Model
 from tinytune.pipeline import Pipeline, PromptJob
 
-context = GPTContext("gpt-4-0125-preview", os.getenv("OPENAI_KEY"))
+context = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY")))
 
 def Callback(content):
     if (content != None):
@@ -10,65 +12,26 @@ def Callback(content):
     else:   
         print()
 
-class SetupJob(PromptJob):
-    def __init__(self, id: str, context: GPTContext):
-        def OnErrorHandler(error: Exception):
-            print(str(error))
+class SetupJob(PromptJob[GPTMessage]):
+    def __init__(self):
+        super().__init__("Setup", context)
+    
+    def Run(self, *args, **kwdargs):
+        try:
+            (context.Prompt(GPTMessage("system", 
+                                "You're a resume analyzer. Your job is to look at resumes and compare them to a given job description. You're supposed to divide the resume into different sections, and rate the relevance of each section to the job. Only start the analysis once you're provided the job description"))
+                .Run(stream=True).Save())
 
-        super().__init__(id, context)
+        except Exception as e:
+            raise e
+                        
 
-        self.OnError = OnErrorHandler
+class TuneJob(PromptJob[GPTMessage]):
+    def __init__(self):
+        super().__init__("Tune", context)
 
     def Run(self, *args):
-        (context.Prompt(GPTMessage("system", 
-                                "You're a resume analyzer. Your job is to look at resumes and compare them to a given job description. You're supposed to divide the resume into different sections, and rate the relevance of each section to the job. Only start the analysis once you're provided the job description"))
-                .Run(True).Save())
-        return
-
-class SetupJob(PromptJob):
-    def __init__(self, id: str, context: GPTContext):
-        def OnErrorHandler(error: Exception):
-            print(str(error))
-
-        super().__init__(id, context)
-
-        self.OnError = OnErrorHandler
-
-    def Run(self, *args):
-        super().Run(args)
-
-        (context.Prompt(GPTMessage("system", 
-                                "You're a resume analyzer. Your job is to look at resumes and compare them to a given job description. You're supposed to divide the resume into different sections, and rate the relevance of each section to the job. Only start the analysis once you're provided the job description"))
-                .Run(True).Save())
-
-class SetupJob(PromptJob):
-    def __init__(self, id: str, context: GPTContext):
-        def OnErrorHandler(error: Exception):
-            print(str(error))
-
-        super().__init__(id, context)
-
-        self.OnError = OnErrorHandler
-
-    def Run(self, *args):
-        super().Run(args)
-
-        (context.Prompt(GPTMessage("system", 
-                                "You're a resume analyzer. Your job is to look at resumes and compare them to a given job description. You're supposed to divide the resume into different sections, and rate the relevance of each section to the job. Only start the analysis once you're provided the job description"))
-                .Run(True).Save())
-
-
-context.OnGenerateCallback = Callback
-
-pipeline: Pipeline[SetupJob] = Pipeline[SetupJob](context)
-
-pipeline.AddJob(SetupJob()) 
-pipeline.AddJob()
-
-(context.Prompt(GPTMessage("system", 
-                           "You're a resume analyzer. Your job is to look at resumes and compare them to a given job description. You're supposed to divide the resume into different sections, and rate the relevance of each section to the job. Only start the analysis once you're provided the job description"))
-        .Run(True).Save()
-        .Prompt(GPTMessage("user", f"here is the resume Rishit Singh rsrishitsingh@gmail.com |  6723381435 |  Vancouver, BC |  https://github.com/rishit-singhEducationShalom Hills International School Gurugram, IndiaHIGH SCHOOL DIPLOMA IN SCIENCE April 2017 – August 2021GPA: 3.2Langara College Vancouver BCASSOCIATES OF SCIENCE IN COMPUTER SCIENCE Jan 2023 – Jan 2025GPA: 3.6ExperienceLangara Computer Science Club Vancouver, BCTECH LEAD January 2023 – Present• Develop and maintain club projects.• Mentor students in programming.• Host workshops on unique topics of different difficulties.Enablesoft ERP Gurugram, IndiaSOFTWARE ENGINEER October 2021 – June 2023• Made a web based AR engine from scratch using WebXR for previewing products from an e-commerce website.• Made a C# based service to dynamically generate mappable textures of rugs their images on the website.• Automated 3D model generation with the Blender API• Wrote ERP services in C#SkillsProgramming: C++, C#, Java, Kotlin, Python, Go, JavaScriptGraphics APIs and Game Engines: OpenGL, SDL, Vulkan, Unity, Godot, Three.js, WebGLDev Ops: Bash/Linux, Docker, Docker-ComposeWeb Backend: ASP.NET Core, DjangoWeb Frontend: HTML/CSS, ReactMath: Linear algebra, Calculus, StatisticsClasses: CPSC1150 Intro To Programming, CPSC1160 Data Structures and Algorithms I, CPSC1181 ObjectProjectsCacoEngine C++, SDLSDL BASED GAME ENGINE WRITTEN IN C++ https://github.com/rishit-singh/CacoEngineWebAR-Abstraction TypeScript, WebXR, Three.jsA WEB BASED GENERAL PURPOSE AR ENGINE. https://github.com/rishit-singh/WebAR-AbstractionRugTextureGenerator C#, OpenCVA C# BASED SERVICE TO DYNAMICALLY GENERATE MAPPABLE TEXTURES FROM IMAGES OF RUGS. https://github.com/Enablesoft-ERP/RugTextureGeneratorRugViewAR-MeshGen Python, Blender APIBLENDER SCRIPTS TO GENERATE 3D MODELS FOR RUGS. https://github.com/Enablesoft-ERP/RugViewAR-MeshGenOpenDatabaseAPI C#API FOR CREATING AND MAINTAINING SQL BASED DATABASE PROGRAMMATICALLY. https://github.com/rishit-singh/OpenDatabaseAPISharpSession C#A C# BASED WEB SESSION MANAGER https://github.com/rishit-singh/SharpSessionCourseView C#, Blazor.NET, PostGRESQLA WEB FRONTEND WITH SEARCH QUERIES FOR A FAST DATABASE CONTAINING INFO ABOUT ALL COURSESOFFERED AT LANGARA IN UPCOMING AND PREVIOUS TERMS. https://github.com/langaracpsc/CourseViewKeyMan C#A GENERAL PURPOSE API KEY MANAGER. https://github.com/rishit-singh/KeyManlangaracpsc-next Typescript, Next.jsWEBSITE FOR LANGARA CS CLUB. https://langaracs.techperegrine-gpt Python, OpenAI APIA PROMPT TUNED GPT BASED CHATBOT FOR LANGARA CS CLUB. https://github.com/langaracpsc/peregrine-gptGit & Github WorkshopA LCS WORKSHOP EXPLAINING HOW TO USE GIT AND GITHUB IN A PROGRAMMING PROJECT.Intro To Programming in PythonA LCS WORKSHOP GIVING A BRIEF INTRODUCTION TO PROGRAMMING CONCEPTS USING THE PROGRAMMINGLANGUAGE PYTHON.Intro To AIA LCS WORKSHOP EXPLAINING THE GENERAL CONCEPTS OF AI AND ITS CURRENT STATE.Intro to ReactA LCS WORKSHOP GIVING A BRIEF INTRODUCTION TO FRONTEND DEVELOPMENT USING REACT.Intro To REST APIsA LCS WORKSHOP EXPLAINING THE WORKING OF THE REST ARCHITECTURE AND ITS USES IN WEB DEVELOPMENT.ALONG WITH A BRIEF INTRODUCTION TO THE OPENAI API AS AN EXAMPLE.Code CollaborationA LCS WORKSHOP DONE BEFORE THE LANGARA HACKS HACKATHON EVENT TO HELP PEOPLE SETUP THEIR PROJECTSAND COLLABORATE WITH THEIR HACKATHON TEAMS USING TOOLS LIKE GIT.. "))
+        (context.Prompt(GPTMessage("user", f"here is the resume Rishit Singh rsrishitsingh@gmail.com |  6723381435 |  Vancouver, BC |  https://github.com/rishit-singhEducationShalom Hills International School Gurugram, IndiaHIGH SCHOOL DIPLOMA IN SCIENCE April 2017 – August 2021GPA: 3.2Langara College Vancouver BCASSOCIATES OF SCIENCE IN COMPUTER SCIENCE Jan 2023 – Jan 2025GPA: 3.6ExperienceLangara Computer Science Club Vancouver, BCTECH LEAD January 2023 – Present• Develop and maintain club projects.• Mentor students in programming.• Host workshops on unique topics of different difficulties.Enablesoft ERP Gurugram, IndiaSOFTWARE ENGINEER October 2021 – June 2023• Made a web based AR engine from scratch using WebXR for previewing products from an e-commerce website.• Made a C# based service to dynamically generate mappable textures of rugs their images on the website.• Automated 3D model generation with the Blender API• Wrote ERP services in C#SkillsProgramming: C++, C#, Java, Kotlin, Python, Go, JavaScriptGraphics APIs and Game Engines: OpenGL, SDL, Vulkan, Unity, Godot, Three.js, WebGLDev Ops: Bash/Linux, Docker, Docker-ComposeWeb Backend: ASP.NET Core, DjangoWeb Frontend: HTML/CSS, ReactMath: Linear algebra, Calculus, StatisticsClasses: CPSC1150 Intro To Programming, CPSC1160 Data Structures and Algorithms I, CPSC1181 ObjectProjectsCacoEngine C++, SDLSDL BASED GAME ENGINE WRITTEN IN C++ https://github.com/rishit-singh/CacoEngineWebAR-Abstraction TypeScript, WebXR, Three.jsA WEB BASED GENERAL PURPOSE AR ENGINE. https://github.com/rishit-singh/WebAR-AbstractionRugTextureGenerator C#, OpenCVA C# BASED SERVICE TO DYNAMICALLY GENERATE MAPPABLE TEXTURES FROM IMAGES OF RUGS. https://github.com/Enablesoft-ERP/RugTextureGeneratorRugViewAR-MeshGen Python, Blender APIBLENDER SCRIPTS TO GENERATE 3D MODELS FOR RUGS. https://github.com/Enablesoft-ERP/RugViewAR-MeshGenOpenDatabaseAPI C#API FOR CREATING AND MAINTAINING SQL BASED DATABASE PROGRAMMATICALLY. https://github.com/rishit-singh/OpenDatabaseAPISharpSession C#A C# BASED WEB SESSION MANAGER https://github.com/rishit-singh/SharpSessionCourseView C#, Blazor.NET, PostGRESQLA WEB FRONTEND WITH SEARCH QUERIES FOR A FAST DATABASE CONTAINING INFO ABOUT ALL COURSESOFFERED AT LANGARA IN UPCOMING AND PREVIOUS TERMS. https://github.com/langaracpsc/CourseViewKeyMan C#A GENERAL PURPOSE API KEY MANAGER. https://github.com/rishit-singh/KeyManlangaracpsc-next Typescript, Next.jsWEBSITE FOR LANGARA CS CLUB. https://langaracs.techperegrine-gpt Python, OpenAI APIA PROMPT TUNED GPT BASED CHATBOT FOR LANGARA CS CLUB. https://github.com/langaracpsc/peregrine-gptGit & Github WorkshopA LCS WORKSHOP EXPLAINING HOW TO USE GIT AND GITHUB IN A PROGRAMMING PROJECT.Intro To Programming in PythonA LCS WORKSHOP GIVING A BRIEF INTRODUCTION TO PROGRAMMING CONCEPTS USING THE PROGRAMMINGLANGUAGE PYTHON.Intro To AIA LCS WORKSHOP EXPLAINING THE GENERAL CONCEPTS OF AI AND ITS CURRENT STATE.Intro to ReactA LCS WORKSHOP GIVING A BRIEF INTRODUCTION TO FRONTEND DEVELOPMENT USING REACT.Intro To REST APIsA LCS WORKSHOP EXPLAINING THE WORKING OF THE REST ARCHITECTURE AND ITS USES IN WEB DEVELOPMENT.ALONG WITH A BRIEF INTRODUCTION TO THE OPENAI API AS AN EXAMPLE.Code CollaborationA LCS WORKSHOP DONE BEFORE THE LANGARA HACKS HACKATHON EVENT TO HELP PEOPLE SETUP THEIR PROJECTSAND COLLABORATE WITH THEIR HACKATHON TEAMS USING TOOLS LIKE GIT.. "))
         .Prompt(GPTMessage("user", """Here's the job description About The Job
 
 As a leader in cloud communications, Line2 is on a mission to provide “everywhere workers” with the means to manage their business communications from anywhere and on any device. Our line of products make it easy to have productive business communication over calls, conferencing, and text messaging.
@@ -113,16 +76,13 @@ The Moz Group, a subsidiary of Ziff Davis, Inc (NASDAQ: ZD), is a leading provid
 The Moz Group is committed to building diverse teams where people of all identities and backgrounds are welcome, included, and respected. We work to help close the gender gap in tech, and to actively recruit people from other underrepresented groups. We strongly encourage women, gender diverse people, and minority candidates to apply.
 
 Our parent company, Ziff Davis, has once again achieved a perfect score of 100 in the Human Rights Campaign (HRC) Foundation's 2023 Corporate Equality Index (CEI). The CEI is a vital benchmarking tool that evaluates corporate policies and practices, and our consistent top score demonstrates our ongoing dedication to maintaining a diverse and inclusive work environment for all.
-"""))
-        .Run(True).Save()
-        .Prompt(GPTMessage("user", """
-            Now return all the analysis in form of JSON like so:    
-                {
-                    'index': Index as an int,
-                    'title': Title for the section, a string,
-                    'relevance_score': Score out of 10,
-                    'improvements': [Examples of possible improvements]
-                }, respond with a JSON string only, no formatting, back ticks, explanation, not even a confirmation.
-        """))
-        .Run(True).Save()
-)
+""")).Run(stream=True).Save())
+
+context.OnGenerateCallback = Callback
+
+pipeline: Pipeline[SetupJob] = Pipeline[SetupJob](context)
+
+pipeline.Jobs.append(SetupJob()) 
+pipeline.Jobs.append(TuneJob())
+
+pipeline.Run()

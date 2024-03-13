@@ -5,7 +5,7 @@ from tinytune.pipeline import Pipeline, PromptJob
 
 
 def Main():
-    context = GPTContext("gpt-4-0125-preview", os.getenv("OPENAI_KEY"))
+    context = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY")))
 
     def Callback(content):
         if (content != None):
@@ -15,7 +15,8 @@ def Main():
 
     context.OnGenerateCallback = Callback
 
-    pipeline: Pipeline = Pipeline()
+    pipeline: Pipeline = Pipeline(context)
+
 
     # inp = input(">  ")
 

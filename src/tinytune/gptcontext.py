@@ -1,24 +1,17 @@
 import openai
 import json
 from tinytune.util.prompt import ValidatePrompt
-from tinytune.llmcontext import LLMContext, Model
+from tinytune.llmcontext import LLMContext, Model, Message
 from typing import Callable, Any
 
-class GPTMessage:
+class GPTMessage(Message):
     __slots__ = ("Role", "Content")
 
     def __init__(self, role: str, content: str):
-        self.Role = role
-        self.Content = content
-    
-    def ToDict(self) -> dict[str, str]:
-        return {
-            "role": self.Role,
-            "content": self.Content
-        } 
+        super().__init__(role, content)
 
 class GPTContext(LLMContext[GPTMessage]):
-    def __init__(self, model: str, apiKey: str, promptFile: str = None):
+    def __init__(self, model: str, apiKey: str, promptFile: str | None = None):
         super().__init__(Model("openai", model))
 
         self.APIKey: str = apiKey
@@ -44,36 +37,17 @@ class GPTContext(LLMContext[GPTMessage]):
 
         return self
     
-    def AddPrompt(self, prompt: dict, onError: Callable[[KeyError], Any] = None) -> bool:
-        try:
-            ValidatePrompt(prompt)
-            self.Messages.append(prompt)
-
-        except KeyError as e:
-            if (onError == None):
-                raise e
-            onError(e)
-
-            return False
-
-        return True
-
-    def Send(self, _messages: list[dict[str, str]]) -> dict:
-        print(f"Message size: {len(self.Messages)}")
-        print(_messages)
-
-        if (len(self.Messages) < 1):
-            for message in _messages:
-                self.Messages.append(message)
-
-        return dict(openai.ChatCompletion.create(model=self.Model, messages=_messages)["choices"][0]["message"])
-
     def Prompt(self, message: GPTMessage):
         self.MessageQueue.append(message)
 
         return self
 
-    def Run(self, stream: bool = False):
+    def Run(self, *args, **kwargs):
+        stream: bool | None = kwargs.get("stream")
+        
+        if (stream == None):    
+            stream = False 
+
         while (self.QueuePointer < len(self.MessageQueue)):
             self.Messages.append(self.MessageQueue[self.QueuePointer])
 
@@ -90,10 +64,9 @@ class GPTContext(LLMContext[GPTMessage]):
                     content = chunk.choices[0].delta.content
                     if (content != None):
                         self.Messages[len(self.Messages) - 1].Content += content 
-                    # print(chunk)
+                    
                     self.OnGenerateCallback(content)
                 
-            
             self.QueuePointer += 1
 
         return self
