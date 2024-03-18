@@ -26,7 +26,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         prevResult: Any = None
 
         count: int = 0
-        
+
         for job in self.Jobs:
             try:
                 prevResult = job(llm=self.LLM, prev_result=prevResult)
@@ -37,7 +37,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
                 self.Results[job.ID].append(prevResult)
 
             except Exception as e:
-                raise Exception(f"Unhandled exception occured at job {count}.\nBacktrace: {map(lambda job : f"{job}\n", [job.ID for job in self.Jobs[count:]])}")
+                raise Exception(f"Unhandled exception occured at job \"{job.ID}\".\nBacktrace: {[job.ID for job in self.Jobs[count:]]}")
             
             count += 1
 

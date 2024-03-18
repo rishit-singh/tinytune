@@ -1,2 +1,3 @@
 tinytune_env
+tinytune/__pycache__/
 prompts.json

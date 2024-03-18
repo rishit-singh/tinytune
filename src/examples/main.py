@@ -2,8 +2,6 @@ import os
 from tinytune.gptcontext import GPTContext, GPTMessage, Model
 from tinytune.pipeline import Pipeline, PromptJob
 
-
-
 def Main():
     context = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY")))
 
