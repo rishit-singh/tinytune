@@ -28,7 +28,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         Returns:
         - Pipeline: The Pipeline object.
         """
-        promptJob: PromptJob[MessageType] = job()
+        promptJob: PromptJob[MessageType] = job
 
         if promptJob.ID is None:
             promptJob.ID = f"job-{len(self.Jobs)}"
@@ -53,8 +53,10 @@ class Pipeline[MessageType](PromptJob[MessageType]):
 
         for job in self.Jobs:
             try:
-                prevResult = job(llm=self.LLM, prev_result=prevResult)
-
+                job.PrevResult = prevResult
+               
+                prevResult = job()
+    
                 if job.ID not in self.Results:
                     self.Results[job.ID] = []
 
@@ -70,7 +72,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
     def Save(self, promptFile: str = "prompts.json"):
         """
         Save the prompts to a file.
-
+0
         Parameters:
         - promptFile (str, optional): The file path to save the prompts to.
         """

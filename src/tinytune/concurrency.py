@@ -31,6 +31,7 @@ class ParallelRunner:
         """
         if onWait is not None:
             onWait(self)
+
         return as_completed(self.Futures)
 
     def OnComplete(self, *args) -> Any:

@@ -3,6 +3,7 @@ from tinytune.llmcontext import LLMContext, Message
 from functools import wraps
 from types import FunctionType
 
+
 class Prompt:
     """
     Represents a collection of messages and functions to execute.
@@ -18,11 +19,12 @@ class Prompt:
         self.Messages: list[dict[str, str]] = messages
         self.Function: list[FunctionType] = functions
 
+
 class PromptJob[MessageType: Message]:
     """
     Represents a job to execute prompts within a context.
     """
-    def __init__(self, id: str, llm: LLMContext[MessageType]):
+    def __init__(self, callback, id: str, llm: LLMContext[MessageType], prevResult: list[Any]):
         """
         Initialize a PromptJob object.
 
@@ -30,9 +32,11 @@ class PromptJob[MessageType: Message]:
         - id (str): Identifier for the job.
         - llm (LLMContext[MessageType]): The language model context.
         """
+
         self.ID: str = id
         self.LLM: LLMContext[MessageType] = llm
-        self.Callback: Callable[[list[Any], dict[str, Any]], None] = lambda x, y: None
+        self.PrevResult: list[Any] = prevResult
+        self.Callback: Callable[[str, LLMContext, list[Any]], None] = callback
 
     def Run(self, *args: Any, **kwdargs) -> Any:
         """
@@ -45,7 +49,7 @@ class PromptJob[MessageType: Message]:
         Returns:
         - Any: Result of running the job.
         """
-        return self.Callback(args, kwdargs)
+        return self.Callback(self.ID, self.LLM, self.PrevResult) # run the callback with necessary injections
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
         """
@@ -61,8 +65,7 @@ class PromptJob[MessageType: Message]:
         return self.Run(args)
 
 
-# Decorator for composing a function into a PromptJob 
-def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None, prevResult: Any | None = None):
+def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None):
     """
     Decorator for composing a function into a PromptJob.
 
@@ -74,23 +77,7 @@ def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = 
     Returns:
     - Callable: Decorated function.
     """
-    def prompt_job_inner(func: Callable[[str, LLMContext], Any]):
-        @wraps(func)
-        def wrapper(inner_id: str = id, llm: LLMContext = context):
-            """
-            Wrapper function for the decorated function.
+    def wrapper(func: Callable[[str, LLMContext, list[Any]], Any]):
+        return PromptJob[MessageType](func, id, context, None)
 
-            Parameters:
-            - inner_id (str, optional): Identifier for the job.
-            - llm (LLMContext, optional): Language model context.
-
-            Returns:
-            - PromptJob: Prompt job with the decorated function.
-            """
-            promptJob: PromptJob[MessageType] = PromptJob[MessageType](inner_id, llm) 
-            promptJob.Callback = func
-            return promptJob
-
-        return wrapper
-
-    return prompt_job_inner
+    return wrapper
