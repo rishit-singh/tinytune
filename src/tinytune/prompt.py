@@ -3,7 +3,6 @@ from tinytune.llmcontext import LLMContext, Message
 from functools import wraps
 from types import FunctionType
 
-
 class Prompt:
     """
     Represents a collection of messages and functions to execute.

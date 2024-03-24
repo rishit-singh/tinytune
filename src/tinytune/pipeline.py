@@ -13,6 +13,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         Parameters:
         - llm (LLMContext): The language model context.
         """
+        super().__init__(None, None, llm, None)
         self.Jobs: list[PromptJob] = list[PromptJob]()
         self.Results: dict[str, list[Any]] = dict[str, list[Any]]()
         self.LLM: LLMContext = llm
