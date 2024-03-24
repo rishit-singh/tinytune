@@ -9,9 +9,11 @@ Prompt jobs are functions designed to execute user-defined prompts on the specif
 ### Defining Prompt Jobs
 Define prompt jobs using the `@prompt_job` decorator.
 ```python
-@prompt_job(id="search", context=pContext)
+llmContext = LLMContext() 
+
+@prompt_job(id="search", context=llmContext)
 def Job(id: str, context: LLMContext, prevResult: Any):
-    (context.Prompt(PerplexityMessage("user", "Do XYZ"))
+    (context.Prompt(Message("user", "Do XYZ"))
             .Run(stream=True))
     return context.Messages[-1]
 ```
