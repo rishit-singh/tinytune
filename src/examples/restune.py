@@ -80,5 +80,6 @@ pipeline: Pipeline[GPTMessage] = Pipeline[GPTMessage](context)
 
 pipeline.AddJob(Setup) 
 pipeline.AddJob(Tune)
+pipeline.AddJob(pipeline)
 
 pipeline.Run()

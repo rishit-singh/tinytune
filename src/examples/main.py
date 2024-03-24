@@ -8,9 +8,11 @@ from tinytune.llmcontext import LLMContext
 from tinytune.gptcontext import GPTContext, GPTMessage, Model
 from tinytune.pipeline import Pipeline
 from tinytune.prompt import prompt_job, PromptJob
+from PerplexityContext import PerplexityContext, PerplexityMessage
 
 def Main():
     context = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY")))
+    pContext = PerplexityContext("pplx-70b-online", os.getenv("PERPLEXITY_KEY"))
 
     def Callback(content):
         if (content != None):
@@ -19,20 +21,20 @@ def Main():
             print()
     
     context.OnGenerateCallback = Callback
+    pContext.OnGenerateCallback = Callback
 
-    @prompt_job(id="job", context=context)
-    def Job(id: str, context: GPTContext, prevResult: Any):
-        (context.Prompt(GPTMessage("user", "you are a REST API, you will respond to JSON based requests asking for data. The response should mimic a HTTP response in form of JSON. The response should only contain the JSON, no explaination or precursor, no formatting or backticks either"))
-                .Run(stream=True)
-                .Prompt(GPTMessage("user", "POST \"Hello world\""))
+    @prompt_job(id="search", context=pContext)
+    def Job(id: str, context: PerplexityContext, prevResult: Any):
+        (context.Prompt(PerplexityMessage("user", "Find me Japanese restaurants in Vancouver"))
                 .Run(stream=True))
-        
-    @prompt_job("explainer", context)
+
+        return context.Messages[-1]
+
+    @prompt_job("extract json", context)
     def Job1(id: str, context: GPTContext, prevResult: Any):
         print("prevResult: ", prevResult.ToDict())
-        (context.Prompt(GPTMessage("user", f"""{prevResult.ToDict()} explain this to me"""))
+        (context.Prompt(GPTMessage("user", f"""{prevResult.Content} extract this data into JSON, and only return the JSON, no formatting, backticks, or explanation"""))
                 .Run(stream=True)) 
-
 
     pipeline: Pipeline = Pipeline(context)
 
