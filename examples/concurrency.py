@@ -1,6 +1,6 @@
 from typing import Callable, Any
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
-from tinytune.gptcontext import GPTContext
+from examples.gptcontext import GPTContext
 
 class ParallelRunner:
     """
@@ -74,8 +74,6 @@ class ParallelRunner:
             self.Pool = ThreadPoolExecutor(max_workers=len(self.Jobs))
             self.Futures = [self.Pool.submit(job, self.GPT) for job in self.Jobs] 
 
-            completed: list[Future] = list[Future](self.GetCompleted())
-
             for future in self.GetCompleted(onWait):
                 self.Results.append(future.result())
 
@@ -84,6 +82,7 @@ class ParallelRunner:
         except Exception as e:
             if onError is None:
                 raise e
+
             onError(e)
 
         return True

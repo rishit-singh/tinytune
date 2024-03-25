@@ -5,7 +5,7 @@ sys.path.append("../")
 
 from typing import Any
 from tinytune.llmcontext import LLMContext
-from tinytune.gptcontext import GPTContext, GPTMessage, Model
+from examples.gptcontext import GPTContext, GPTMessage, Model
 from tinytune.pipeline import Pipeline
 from tinytune.prompt import prompt_job, PromptJob
 from PerplexityContext import PerplexityContext, PerplexityMessage
