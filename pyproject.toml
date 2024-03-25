@@ -1,0 +1,21 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "tinytune"
+version = "0.0.1"
+authors = [
+  { name="Rishit Singh", email="rsrishitsingh@gmail.com" },
+]
+description = "A simple prompt tuning library for LLMs"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Github = "https://github.com/rishit-singh/tinytune"

@@ -2,7 +2,6 @@
 
 TinyTune is a lightweight library designed for prompt tuning, enabling the use of Python functions as prompt sequences within an LLM-agnostic pipeline.
 
-## Usage Guide
 ### Prompt Jobs
 Prompt jobs are functions designed to execute user-defined prompts on the specified LLM (Language Model) and enable performing logic on the results. This functionality is crucial for orchestrating complex interactions with the language model, such as querying information or generating responses based on input prompts. By defining prompt jobs, users can encapsulate specific tasks or actions within their pipeline, facilitating modular and organized development of prompt-based workflows.
 
@@ -32,7 +31,7 @@ pipeline: Pipeline = Pipeline(context)
 
 ## Example
 
-This example demonstrates the usage of the TinyTune library to orchestrate interactions with language models. It sets up two prompt jobs: one for searching for Indian restaurants in Vancouver using a PerplexityContext, and another for extracting data into JSON format using a GPTContext. These prompt jobs are then added to a pipeline, which executes them sequentially. The program showcases how to define prompt jobs, configure contexts, create pipelines, and run them to perform specific tasks such as searching for information and extracting data.
+This example demonstrates the usage of the TinyTune library to orchestrate interactions with language models. It sets up two prompt jobs: one for searching for Japanese restaurants in Vancouver using a PerplexityContext, and another for extracting data into JSON format using a GPTContext. These prompt jobs are then added to a pipeline, which executes them sequentially. The program showcases how to define prompt jobs, configure contexts, create pipelines, and run them to perform specific tasks such as searching for information and extracting data.
 
 ```python
 # Initializing contexts
@@ -73,5 +72,4 @@ pipeline: Pipeline = Pipeline(context)
 
 # Run the pipeline
 pipeline.Run()
-```
 ```

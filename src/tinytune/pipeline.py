@@ -73,8 +73,8 @@ class Pipeline[MessageType](PromptJob[MessageType]):
     def Save(self, promptFile: str = "prompts.json"):
         """
         Save the prompts to a file.
-0
+
         Parameters:
-        - promptFile (str, optional): The file path to save the prompts to.
+        0- promptFile (str, optional): The file path to save the prompts to.
         """
         self.LLM.Save(promptFile)
