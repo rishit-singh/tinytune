@@ -61,7 +61,7 @@ class PromptJob[MessageType: Message]:
         Returns:
         - Any: Result of calling the job.
         """
-        return self.Run(args)
+        return self.Run(args, kwds)
 
 
 def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None):

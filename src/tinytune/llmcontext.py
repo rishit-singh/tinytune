@@ -45,7 +45,8 @@ class Model:
         """
         self.Owner: str = owner
         self.Name: str = name
-        
+
+
 class LLMContext[MessageType]:
     """
     Represents a context for a language model with support for a specific message type.
@@ -111,5 +112,4 @@ class LLMContext[MessageType]:
         Returns:
         - Any: Result of running the model.
         """
-        pass
         return self

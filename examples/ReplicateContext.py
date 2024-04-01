@@ -1,35 +1,40 @@
-import openai
 import json
+import replicate
+
 from tinytune.util.prompt import ValidatePrompt
 from tinytune.llmcontext import LLMContext, Model, Message
 from typing import Callable, Any
 
-class GPTMessage(Message):
+class ReplicateMessage(Message):
     __slots__ = ("Role", "Content")
 
     def __init__(self, role: str, content: str):
         super().__init__(role, content)
 
-class GPTContext(LLMContext[GPTMessage]):
-    def __init__(self, model: str, apiKey: str, promptFile: str | None = None):
-        super().__init__(Model("openai", model))
+    def __str__(self) -> str:
+        if (self.Role == "user"):
+            return f"[INST] {self.Content} [/INST]"
+        return self.Content
+            
+class ReplicateContext(LLMContext[ReplicateMessage]):
+    def __init__(self, model: Model, apiKey: str, promptFile: str | None = None):
+        super().__init__(model)
 
         self.APIKey: str = apiKey
-        self.Messages: list[GPTMessage] = []
+        self.Messages: list[ReplicateMessage] = []
         self.QueuePointer: int = 0
-
-        openai.api_key = self.APIKey
+        self.Model = replicate.models.get(f"{model.Owner}/{model.Name}")
 
     def LoadMessages(self, promptFile: str = "prompts.json") -> None:
         self.PromptFile = promptFile
-
+ 
         with open(promptFile, "r") as fp:
             self.Messages = json.load(fp)
 
     def Save(self, promptFile: str = "prompts.json") -> Any: 
         try:
             with open(promptFile, "w") as fp:
-                json.dump([ message.ToDict() for message in self.Messages ], fp, indent=2)
+                fp.write("\n".join([str(message) for message in self.Messages])) 
                 
         except:
             print("An error occured in saving messages.")
@@ -37,7 +42,7 @@ class GPTContext(LLMContext[GPTMessage]):
 
         return self
     
-    def Prompt(self, message: GPTMessage):
+    def Prompt(self, message: ReplicateMessage):
         self.MessageQueue.append(message)
 
         return self
@@ -51,17 +56,16 @@ class GPTContext(LLMContext[GPTMessage]):
         while (self.QueuePointer < len(self.MessageQueue)):
             self.Messages.append(self.MessageQueue[self.QueuePointer])
 
-            response = openai.chat.completions.create(model=self.Model.Name, 
-                                           messages=[ message.ToDict() for message in self.Messages ] + [self.MessageQueue[self.QueuePointer].ToDict()],
-                                           temperature=0,
-                                           stream=stream)
-            print("message_len: ", len([ message.ToDict() for message in self.Messages ] + [self.MessageQueue[self.QueuePointer].ToDict()])) 
-
-            self.Messages.append(GPTMessage("assistant", ""))    
+            response = replicate.stream(self.Model, input = {
+                    "prompt": " ".join([str(message) for message in self.Messages])
+                }) 
+            
+            self.Messages.append(ReplicateMessage("assistant", ""))    
         
             if (stream):
                 for chunk in response:
-                    content = chunk.choices[0].delta.content
+                    content = chunk.data
+
                     if (content != None):
                         self.Messages[len(self.Messages) - 1].Content += content 
                     

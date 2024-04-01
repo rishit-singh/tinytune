@@ -1,22 +1,22 @@
 from typing import Callable, Any
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
-from examples.gptcontext import GPTContext
+from tinytune.llmcontext import LLMContext
 
 class ParallelRunner:
     """
     Represents a parallel runner for executing jobs concurrently.
     """
-    def __init__(self, gpt: GPTContext) -> None:
+    def __init__(self, llm: LLMContext) -> None:
         """
         Initialize a ParallelRunner object.
 
         Parameters:
-        - gpt (GPTContext): The GPT context.
+        - gpt (LLMContext): The GPT context.
         """
-        self.Jobs: list[Callable[[GPTContext, list[Any]], Any]] = []
+        self.Jobs: list[Callable[[LLMContext, list[Any]], Any]] = []
         self.Futures: list[Future]
         self.Pool: ThreadPoolExecutor = None
-        self.GPT: GPTContext = gpt
+        self.GPT: LLMContext = llm
         self.Results: list = [] 
 
     def GetCompleted(self, onWait: Callable[[Any], Any] = None):
@@ -46,12 +46,12 @@ class ParallelRunner:
         """
         return
 
-    def AddJob(self, job: Callable[[GPTContext, list[Any]], Any]) -> Any:
+    def AddJob(self, job: Callable[[LLMContext, list[Any]], Any]) -> Any:
         """
         Add a job to the runner.
 
         Parameters:
-        - job (Callable[[GPTContext, list[Any]], Any]): The job to add.
+        - job (Callable[[LLMContext, list[Any]], Any]): The job to add.
 
         Returns:
         - ParallelRunner: The ParallelRunner object.
@@ -59,7 +59,7 @@ class ParallelRunner:
         self.Jobs.append(job)
         return self 
 
-    def Run(self, onWait: Callable[[Any], Any] = None, onError: Callable[[Exception], Any] = None) -> bool:
+    def Run(self, onWait: Callable[[Any], Any] = None) -> bool:
         """
         Run the parallel runner.
 
@@ -80,9 +80,6 @@ class ParallelRunner:
             self.OnComplete()
  
         except Exception as e:
-            if onError is None:
-                raise e
-
-            onError(e)
+            raise e
 
         return True
