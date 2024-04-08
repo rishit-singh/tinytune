@@ -10,6 +10,7 @@ import re
 import json
 import sys
 import os
+import asyncio
 
 def Callback(content):
     if (content != None):
@@ -24,8 +25,10 @@ def LoadMessages(path: str, max: int, user: str) -> list[ReplicateMessage]:
         for message in json.load(fp)["messages"][:max]:
             if (message["author"]["name"] == user):
                 regex = re.compile(r'((http|https)\:\/\/)?[a-zA-Z0-9\.\/\?\:@\-_=#]+\.([a-zA-Z]){2,6}([a-zA-Z0-9\.\&\/\?\:@\-_=#])*')
+
                 if regex.search(message['content']):
                     continue
+
                 prompts.append(ReplicateMessage("user", message["content"]))
 
             else:
@@ -34,11 +37,11 @@ def LoadMessages(path: str, max: int, user: str) -> list[ReplicateMessage]:
     return prompts 
 
     
-llm: ReplicateContext = ReplicateContext(Model("mistralai", "mixtral-8x7b-instruct-v0.1"), os.getenv("REPLICATE_KEY"), "discord_ai_prompt_context.txt")
+llm: ReplicateContext = ReplicateContext(Model("mistralai", "mistral-7b-instruct-v0.2"), os.getenv("REPLICATE_KEY"), "discord_ai_prompt_context.txt")
 # llm: GPTContext = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY"))) 
 llm.OnGenerateCallback = Callback
 
-messages = LoadMessages(sys.argv[1], int(sys.argv[2]), "userid")
+messages = LoadMessages(sys.argv[1], int(sys.argv[2]), sys.argv[3])
 
 @prompt_job(id="build_context", context=llm)
 def BuildContext(id: str, context: ReplicateContext, prevResult: Any):
@@ -63,8 +66,3 @@ discordAI: Pipeline = Pipeline(llm)
     .AddJob(RunChatBot)
     .Run())
 
-
-(llm.Prompt(ReplicateMessage("user", "hello"))
-    .Prompt(ReplicateMessage("user", "how's it going?"))
-    .Prompt(ReplicateMessage("user", "sup"))
-    .Run())

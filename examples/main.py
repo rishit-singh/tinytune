@@ -35,6 +35,7 @@ def Main():
         print("prevResult: ", prevResult.ToDict())
         (context.Prompt(GPTMessage("user", f"""{prevResult.Content} extract this data into JSON, and only return the JSON, no formatting, backticks, or explanation"""))
                 .Run(stream=True)) 
+        
 
     pipeline: Pipeline = Pipeline(context)
 
