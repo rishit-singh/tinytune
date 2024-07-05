@@ -61,8 +61,6 @@ class GPTContext(LLMContext[GPTMessage]):
                 stream=stream,
             )
 
-            self.Messages.append(GPTMessage("assistant", ""))
-
             if stream:
                 for chunk in response:
                     content = chunk.choices[0].delta.content
