@@ -22,7 +22,6 @@ class WebGPTMessage(Message):
         super().__init__(role, content)
         self.Type = type
 
-
 class WebGPTContext(LLMContext[WebGPTMessage]):
     def __init__(self, model: str, apiKey: str, promptFile: str | None = None):
         super().__init__(Model("openai", model))
@@ -33,7 +32,7 @@ class WebGPTContext(LLMContext[WebGPTMessage]):
 
         openai.api_key = self.APIKey
 
-        self.OnFetch = lambda content : content
+        self.OnFetch = lambda content, url : (content, url)
 
         self.Functions = [
             {
@@ -77,7 +76,7 @@ class WebGPTContext(LLMContext[WebGPTMessage]):
         return self
 
     def FetchURL(self, url):
-        return self.OnFetch(str(requests.get(url).content))
+        return self.OnFetch(str(requests.get(url).content), url)
 
 
     def PromptSearch(self, query: str):
@@ -175,7 +174,9 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
 
         self.client = Groq(api_key=self.APIKey)
 
-        self.OnFetch = lambda content : content
+        self.OnFetch = lambda content, url : (content, URL)
+
+        self.PromptFile = promptFile
 
         self.Prompt(
             WebGroqMessage(
@@ -192,6 +193,8 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
 
     def Save(self, promptFile: str = "prompts.json") -> Any:
         try:
+            promptFile = promptFile if self.PromptFile == None else self.PromptFile
+
             with open(promptFile, "w") as fp:
                 json.dump([message.ToDict() for message in self.Messages], fp, indent=2)
 
@@ -206,7 +209,7 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
         return self
 
     def FetchURL(self, url):
-        return self.OnFetch(str(requests.get(url).content))
+        return self.OnFetch(str(requests.get(url).content), url)
 
     def PromptSearch(self, query: str):
         self.Prompt(WebGroqMessage("user", query, "search_message"))
@@ -224,6 +227,7 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
             isSearchMessage: bool = (self.Messages[-1].Type == "search_message")
 
             messages = [message.ToDict() for message in self.Messages] + [self.MessageQueue[self.QueuePointer].ToDict()]
+
 
             try:
                 response = self.client.chat.completions.create(
@@ -248,7 +252,7 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
 
                 # Handle search messages with manual function call
                 if isSearchMessage and content.startswith("FETCH:"):
-                    url = content[6:].strip()  # Remove "FETCH:" and any whitespace
+                    url = content[6:].strip()
                     fetched_content = self.FetchURL(url)
                     self.Messages.append(WebGroqMessage("assistant", f"Fetched content from {url}: {fetched_content}"))
 
@@ -281,7 +285,7 @@ def Callback(content):
 
 extractContext.OnGenerateCallback = Callback
 
-def OnFetch(content: str):
+def OnFetch(content: str, url: str) -> tuple:
     parser = Parser()
 
     parser.feed(content)
@@ -299,7 +303,7 @@ def OnFetch(content: str):
             else:
                 extractContext.Prompt(WebGroqMessage("user", parser.Text[x:30000]))
 
-    return extractContext.Run(stream=True).Messages[-1].Content
+    return (extractContext.Run(stream=True).Messages[-1].Content, url)
 
 
 context.OnGenerateCallback = Callback
@@ -320,11 +324,8 @@ def Setup(id: str, context: WebGroqContext, prevResult: Any):
 @prompt_job(id="fetch", context=context)
 def Fetch(id: str, context: WebGroqContext, prevResult: Any):
     (context.Prompt(WebGroqMessage("system", "You're a web fetcher. You fetch the web pages from the URLs given to you"))
-            .PromptSearch("https://www.cnn.com/2024/06/26/tech/al-michaels-ai-olympics/index.html").Run(stream=True)).Save()
-
-    time.sleep(5)
-
-    (context.PromptSearch("https://www.ctvnews.ca/sci-tech/nbc-to-use-ai-version-of-announcer-al-michaels-voice-for-olympics-recaps-1.6942177")
+            .PromptSearch("https://www.cnn.com/2024/06/26/tech/al-michaels-ai-olympics/index.html")
+            .PromptSearch("https://www.ctvnews.ca/sci-tech/nbc-to-use-ai-version-of-announcer-al-michaels-voice-for-olympics-recaps-1.6942177")
             .Run(stream=True).Save())
 
     return (context.Messages[-1].Content, context.Messages[-3].Content)
@@ -332,6 +333,7 @@ def Fetch(id: str, context: WebGroqContext, prevResult: Any):
 @prompt_job(id="compare", context=context)
 def Compare(id: str, context: WebGroqContext, prevResult: Any):
     context.Prompt(WebGroqMessage("user", "Now compare these two articles based on how biased they are.")).Run(stream=True).Save()
+    return context.Messages[-1].Content
 
 @prompt_job(id="extract", context=extractContext)
 def Extract(id: str, context: WebGroqContext, prevResult: Any):
@@ -345,9 +347,33 @@ def Extract(id: str, context: WebGroqContext, prevResult: Any):
 
     return context.Messages[-1]
 
+@prompt_job(id="jsonify", context=context)
+def Jsonify(id: str, context: WebGroqContext, prevResult: str):
+    print('\n')
+
+    jsonModel = [
+        {
+            "id": 0,
+            "article": {
+                "title": "",
+                "url": "original fetched URL"
+            },
+            "analysis": {}
+        }
+    ]
+
+    context.Prompt(WebGroqMessage("user", f"Now jsonify this analysis in the formatNO BACKTICKS {json.dumps(jsonModel)}\n{prevResult}")).Run(stream=True)
+
+
+start = time.time()
+
 pipeline = Pipeline(extractContext)
 
 (pipeline.AddJob(Setup)
         .AddJob(Fetch)
         .AddJob(Compare)
+        .AddJob(Jsonify)
         .Run(stream=True))
+
+
+print("Time elapsed: ", time.time() - start)
