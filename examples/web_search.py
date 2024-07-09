@@ -15,147 +15,6 @@ from tinytune.llmcontext import LLMContext, Model, Message
 from typing import Callable, Any
 from groq import Groq
 
-class WebGPTMessage(Message):
-    __slots__ = ("Role", "Content", "Type")
-
-    def __init__(self, role: str, content: str, type: str = "message"):
-        super().__init__(role, content)
-        self.Type = type
-
-class WebGPTContext(LLMContext[WebGPTMessage]):
-    def __init__(self, model: str, apiKey: str, promptFile: str | None = None):
-        super().__init__(Model("openai", model))
-
-        self.APIKey: str = apiKey
-        self.Messages: list[WebGPTMessage] = []
-        self.QueuePointer: int = 0
-
-        openai.api_key = self.APIKey
-
-        self.OnFetch = lambda content, url : (content, url)
-
-        self.Functions = [
-            {
-                "name": "FetchURL",
-                "description": "Fetches content from a URL",
-                "parameters": {
-                    "type": "object",
-                    "properties": {"url": {"type": "string"}},
-                    "required": ["url"],
-                },
-            },
-        ]
-
-        self.Prompt(
-            WebGPTMessage(
-                "system",
-                "You are a web search assistant. You search the web for the given urls.",
-            )
-        )
-
-    def LoadMessages(self, promptFile: str = "prompts.json") -> None:
-        self.PromptFile = promptFile
-
-        with open(promptFile, "r") as fp:
-            self.Messages = json.load(fp)
-
-    def Save(self, promptFile: str = "prompts.json") -> Any:
-        try:
-            with open(promptFile, "w") as fp:
-                json.dump([message.ToDict() for message in self.Messages], fp, indent=2)
-
-        except:
-            print("An error occured in saving messages.")
-            return self
-
-        return self
-
-    def Prompt(self, message: WebGPTMessage):
-        self.MessageQueue.append(message)
-
-        return self
-
-    def FetchURL(self, url):
-        return self.OnFetch(str(requests.get(url).content), url)
-
-
-    def PromptSearch(self, query: str):
-        self.Prompt(WebGPTMessage("user", query, "search_message"))
-        return self
-
-
-    def Run(self, *args, **kwargs):
-        stream: bool | None = kwargs.get("stream")
-
-        if stream == None:
-            stream = False
-
-        while self.QueuePointer < len(self.MessageQueue):
-            self.Messages.append(self.MessageQueue[self.QueuePointer])
-
-            isSearchMessage: bool = (
-                self.Messages[-1].Type == "search_message"
-            )
-
-            if isSearchMessage:
-                response = openai.chat.completions.create(
-                    model=self.Model.Name,
-                    messages=[message.ToDict() for message in self.Messages]
-                    + [self.MessageQueue[self.QueuePointer].ToDict()],
-                    temperature=0,
-                    stream=stream,
-                    functions=self.Functions,
-                    function_call={
-                        "name": "FetchURL",
-                        "arguments": json.dumps({"url": self.Messages[-1].Content}),
-                    },
-                )
-
-            else:
-                response = openai.chat.completions.create(
-                    model=self.Model.Name,
-                    messages=[message.ToDict() for message in self.Messages]
-                    + [self.MessageQueue[self.QueuePointer].ToDict()],
-                    temperature=0,
-                    stream=stream,
-                    functions=self.Functions,
-                )
-
-            functionCall = {"name": "", "arguments": "" }
-
-            if stream:
-                if isSearchMessage:
-                    for res in response:
-                        delta = res.choices[0].delta
-                        if delta.function_call != None:
-                            if delta.function_call.name != None:
-                                functionCall["name"] = delta.function_call.name
-                            if delta.function_call.arguments:
-                                functionCall["arguments"] += delta.function_call.arguments
-
-                        if res.choices[0].finish_reason != None:
-                            print("Calling the function")
-
-                            args = dict(json.loads(functionCall["arguments"]))
-                            if functionCall["name"] == "FetchURL":
-                                    self.Messages.append(WebGPTMessage("assistant", f"Fetched {self.FetchURL(args["url"])}"))
-                            break
-
-                        # if not delta.get("content", None):
-                        # continue
-
-                else:
-                    for chunk in response:
-                        content = chunk.choices[0].delta.content
-                        if content != None:
-                            self.Messages[len(self.Messages) - 1].Content += content
-
-                        self.OnGenerateCallback(content)
-
-            self.QueuePointer += 1
-
-        return self
-
 class WebGroqMessage(Message):
     __slots__ = ("Role", "Content", "Type")
 
@@ -324,8 +183,8 @@ def Setup(id: str, context: WebGroqContext, prevResult: Any):
 @prompt_job(id="fetch", context=context)
 def Fetch(id: str, context: WebGroqContext, prevResult: Any):
     (context.Prompt(WebGroqMessage("system", "You're a web fetcher. You fetch the web pages from the URLs given to you"))
-            .PromptSearch("https://www.cnn.com/2024/06/26/tech/al-michaels-ai-olympics/index.html")
-            .PromptSearch("https://www.ctvnews.ca/sci-tech/nbc-to-use-ai-version-of-announcer-al-michaels-voice-for-olympics-recaps-1.6942177")
+            .PromptSearch("https://www.foxnews.com/politics/biden-dodges-answering-whether-hed-take-neurological-test-no-one-said-i-had-to")
+            .PromptSearch("https://www.pbs.org/newshour/politics/elected-democrats-admit-biden-had-poor-debate-performance-but-reject-talk-of-replacement")
             .Run(stream=True).Save())
 
     return (context.Messages[-1].Content, context.Messages[-3].Content)
@@ -347,22 +206,36 @@ def Extract(id: str, context: WebGroqContext, prevResult: Any):
 
     return context.Messages[-1]
 
+
 @prompt_job(id="jsonify", context=context)
 def Jsonify(id: str, context: WebGroqContext, prevResult: str):
     print('\n')
-
-    jsonModel = [
-        {
-            "id": 0,
-            "article": {
-                "title": "",
-                "url": "original fetched URL"
-            },
-            "analysis": {}
+    
+    jsonModel = { "analysis": [
+            {
+                "id": 0,
+                "article": {
+                    "title": "",
+                    "url": "original fetched URL"
+                },
+                "analysis": {}
+            }
+        ],
+        "opinions": {
+            "neutral": "",
+            "honest": "", 
+            "factual": ""
         }
-    ]
+    }
 
-    context.Prompt(WebGroqMessage("user", f"Now jsonify this analysis in the formatNO BACKTICKS {json.dumps(jsonModel)}\n{prevResult}")).Run(stream=True)
+    context.Prompt(WebGroqMessage("user", f"Now jsonify this analysis in the format NO BACKTICKS {json.dumps(jsonModel)}\n{prevResult}")).Run(stream=True)
+
+    return context.Messages[-1].Content
+
+
+@prompt_job("opinions", context)
+def GetOpinions(id: str, context: WebGroqContext, prevResult: str):
+    return context.Prompt(WebGroqMessage("user", "Give your honest opinions on the situation along with a factually correct and neutral stance.")).Run(stream=True).Messages[-1].Content
 
 
 start = time.time()
@@ -371,9 +244,11 @@ pipeline = Pipeline(extractContext)
 
 (pipeline.AddJob(Setup)
         .AddJob(Fetch)
+        .AddJob(GetOpinions)
         .AddJob(Compare)
         .AddJob(Jsonify)
         .Run(stream=True))
 
+print("\n\nFinal parsed: ", json.dumps(json.loads(pipeline.Results["jsonify"][-1]), indent=2))
 
 print("Time elapsed: ", time.time() - start)
