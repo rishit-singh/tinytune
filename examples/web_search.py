@@ -25,7 +25,6 @@ extractContext = WebGroqContext(
 )
 # extractContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")), promptFile="extractContext.json")
 
-
 class Parser(html.parser.HTMLParser):
     def __init__(self):
         super().__init__()
@@ -43,7 +42,6 @@ def Callback(content):
 
 
 extractContext.OnGenerateCallback = Callback
-
 
 def OnFetch(content: str, url: str) -> tuple:
     parser = Parser()
@@ -69,13 +67,11 @@ def OnFetch(content: str, url: str) -> tuple:
 
     return (extractContext.Run(stream=True).Messages[-1].Content, url)
 
-
 context.OnGenerateCallback = Callback
 context.OnFetch = OnFetch
 
-
 @prompt_job(id="setup", context=extractContext)
-def Setup(id: str, context: WebGroqContext, prevResult: Any):
+def Setup(id: str, context: WebGroqContext, prevResult: Any, *args, **kwargs):
     (
         context.Prompt(
             WebGroqMessage(
@@ -83,7 +79,8 @@ def Setup(id: str, context: WebGroqContext, prevResult: Any):
                 """
             You're a text extractor, you take long news article texts with a bunch of text content. You're supposed to extract just the actual article content from it and not the remaining text scraped from the webpage.
 
-            The text can be split into multple prompts so look out for the word START to see where the text starts, and END for where it ends. If a message doesnt contain END, that means there's still more text to come.
+            Th
+            e text can be split into multple prompts so look out for the word START to see where the text starts, and END for where it ends. If a message doesnt contain END, that means there's still more text to come.
 
             You return the text in form of json, using the following schema: {'title':'', metadata:{}, 'content': ''}.
         """,
@@ -94,7 +91,6 @@ def Setup(id: str, context: WebGroqContext, prevResult: Any):
     )
 
     return context.Messages[-1]
-
 
 @prompt_job(id="fetch", context=context)
 def Fetch(id: str, context: WebGroqContext, prevResult: Any):

@@ -35,36 +35,34 @@ class PromptJob[MessageType: Message]:
         self.ID: str = id
         self.LLM: LLMContext[MessageType] = llm
         self.PrevResult: list[Any] = prevResult
-        self.Callback: Callable[[str, LLMContext, list[Any]], None] = callback
+        self.Callback: Callable[[str, LLMContext, list[Any], tuple | None, dict | None], None] = callback
 
-    def Run(self, *args: Any, **kwdargs) -> Any:
+    def Run(self, *args: Any, **kwargs) -> Any:
         """
         Run the prompt job.
 
         Parameters:
         - args (Any): Arguments to the job.
-        - kwdargs (Any): Keyword arguments to the job.
+        - kwargs (Any): Keyword arguments to the job.
 
         Returns:
         - Any: Result of running the job.
         """
-        return self.Callback(self.ID, self.LLM, self.PrevResult) # run the callback with necessary injections
+        return self.Callback(self.ID, self.LLM, self.PrevResult, *args, **kwargs) # run the callback with necessary injections
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
+    def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Call the prompt job.
-
         Parameters:
         - args (Any): Arguments to the job.
-        - kwds (Any): Keyword arguments to the job.
+        - kwargs (Any): Keyword arguments to the job.
 
         Returns:
         - Any: Result of calling the job.
         """
-        return self.Run(args, kwds)
 
+        return self.Run(args, kwargs)
 
-def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None):
+def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None, *args, **kwargs):
     """
     Decorator for composing a function into a PromptJob.
 

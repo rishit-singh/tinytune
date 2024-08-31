@@ -1,4 +1,5 @@
 from tinytune.llmcontext import LLMContext, Model, Message
+from typing import Callable, Any
 from groq import Groq
 
 class WebGroqMessage(Message):

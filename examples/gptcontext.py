@@ -4,7 +4,6 @@ from tinytune.util.prompt import ValidatePrompt
 from tinytune.llmcontext import LLMContext, Model, Message
 from typing import Callable, Any
 
-
 class GPTMessage(Message):
     __slots__ = ("Role", "Content")
 

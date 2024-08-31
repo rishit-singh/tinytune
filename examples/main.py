@@ -1,6 +1,9 @@
 import os
 import sys
 
+from pydantic_core import PydanticSerializationUnexpectedValue
+
+sys.path.append("../src")
 sys.path.append("../")
 
 from typing import Any
@@ -12,10 +15,20 @@ from tinytune.prompt import prompt_job, PromptJob
 from PerplexityContext import PerplexityContext, PerplexityMessage
 
 
+gptContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")))
+
+def Callback(content):
+    if content != None:
+        print(content, end="")
+    else:
+        print()
+
+gptContext.OnGenerateCallback = Callback
+
 def Main():
     gptContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")))
     pContext = PerplexityContext(
-        "llama-3-sonar-large-32k-online", os.getenv("PERPLEXITY_KEY")
+        "llama-3-sonar-large-32k-online", str(os.getenv("PERPLEXITY_KEY"))
     )
 
     def Callback(content):
@@ -56,5 +69,12 @@ def Main():
 
     pipeline.Run()
 
+    return pipeline
 
-Main()
+@prompt_job(id="test", context=gptContext)
+def Test(id: str, context: GPTContext, prevResult: Any, *args):
+    print("Job called: ", args)
+
+Test("hello world", foo="bar")
+
+# Main()
