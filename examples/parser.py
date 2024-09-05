@@ -18,7 +18,6 @@ def Parse(docString: str) -> dict:
         if (line == '' or line == "\n"):
             continue
 
-
         if (colon >= 1):
             key = "params"
 
