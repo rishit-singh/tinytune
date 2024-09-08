@@ -1,6 +1,8 @@
+import json
 from tinytune.llmcontext import LLMContext, Model, Message
 from typing import Callable, Any
 from groq import Groq
+
 
 class WebGroqMessage(Message):
     __slots__ = ("Role", "Content", "Type")
@@ -95,7 +97,9 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
                     content = response.choices[0].message.content
                     self.OnGenerateCallback(content)
 
-                self.Messages[-1].Content = content
+                if content != "" and content:
+                    self.Messages.append(WebGroqMessage("assistant", ""))
+                    self.Messages[-1].Content = content
 
                 # Handle search messages with manual function call
                 if isSearchMessage and content.startswith("FETCH:"):
