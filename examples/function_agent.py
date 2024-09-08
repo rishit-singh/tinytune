@@ -118,7 +118,7 @@ def Classifier(context: LLMContext, videos: str) -> Pipeline:
 
         If you choose to call a function ONLY reply in the following format with no prefix or suffix:
 
-        <function=example_function_name>{{\"example_name\": \"example_value\"}}</function>
+        Function Param1 Param2 ..
 
         Reminder:
         - Function calls MUST follow the specified format, start with <function= and end with </function>
@@ -130,7 +130,6 @@ def Classifier(context: LLMContext, videos: str) -> Pipeline:
         .Prompt(WebGroqMessage("user", "Find me a fun youtube video. Call the appropriate function"))
         .Run(stream=True))
 
-        print(LLM.Messages)
 
     @prompt_job(id="Classify", context=context)
     def Classify(id: str, context: LLMContext, prevResult: Any, *args):
