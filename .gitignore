@@ -1,4 +1,5 @@
 tinytune_env
+.venv
 src/tinytune/__pycache__/
 dist
 prompts.json
