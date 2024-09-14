@@ -4,11 +4,11 @@ from tinytune.tool import tool
 
 sys.path.append("../src")
 sys.path.append("../")
+
 from googleapiclient.discovery import build
 from dotenv import load_dotenv
 
 load_dotenv()
-
 
 class YouTubeDataAPI:
     def __init__(self, api_key):

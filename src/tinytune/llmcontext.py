@@ -58,10 +58,11 @@ class LLMContext[MessageType]:
         Parameters:
         - model (Model): The model associated with the context.
         """
-        self.Messages: list[MessageType] = [] 
+        self.Messages: list[MessageType] = []
         self.MessageQueue: list[MessageType] = []
         self.Model: Model = model
-        self.OnGenerateCallback: Callable[[list[str]], None] = lambda tokens : None 
+        self.OnGenerateCallback: Callable[[list[str]], None] = lambda tokens : None
+        self.CallbackStack = []
 
     def Top(self) -> MessageType:
         """
@@ -85,7 +86,7 @@ class LLMContext[MessageType]:
         self.MessageQueue.append(message)
         return self
 
-    def Save(self, promptFile: str = "prompts.json") -> Any: 
+    def Save(self, promptFile: str = "prompts.json") -> Any:
         """
         Save the messages in the context to a JSON file.
 
@@ -98,14 +99,20 @@ class LLMContext[MessageType]:
         try:
             with open(promptFile, "w") as fp:
                 json.dump([ message.ToDict() for message in self.Messages ], fp, indent=2)
-                
+
         except Exception as e:
             print(f"An error occurred in saving messages: {e.args[0]}")
-            return self 
+            return self
 
         return self
 
-    def Run(self, *args, **kwargs):   
+    def Then(self, callback: Callable[[MessageType], None]):
+        self.CallbackStack.append(callback)
+
+        return self
+
+
+    def Run(self, *args, **kwargs):
         """
         Placeholder method for running the model.
 

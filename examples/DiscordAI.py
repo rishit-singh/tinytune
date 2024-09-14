@@ -15,9 +15,9 @@ import asyncio
 def Callback(content):
     if (content != None):
         print(content, end="")
-    else:   
+    else:
         print()
-    
+
 def LoadMessages(path: str, max: int, user: str) -> list[ReplicateMessage]:
     prompts: list[ReplicateMessage] = []
 
@@ -34,11 +34,11 @@ def LoadMessages(path: str, max: int, user: str) -> list[ReplicateMessage]:
             else:
                 prompts.append(ReplicateMessage("assistant", message["content"]))
 
-    return prompts 
+    return prompts
 
-    
+
 llm: ReplicateContext = ReplicateContext(Model("mistralai", "mistral-7b-instruct-v0.2"), os.getenv("REPLICATE_KEY"), "discord_ai_prompt_context.txt")
-# llm: GPTContext = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY"))) 
+# llm: GPTContext = GPTContext("gpt-4-0125-preview", str(os.getenv("OPENAI_KEY")))
 llm.OnGenerateCallback = Callback
 
 messages = LoadMessages(sys.argv[1], int(sys.argv[2]), sys.argv[3])
@@ -65,4 +65,3 @@ discordAI: Pipeline = Pipeline(llm)
 (discordAI.AddJob(BuildContext)
     .AddJob(RunChatBot)
     .Run())
-

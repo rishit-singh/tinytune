@@ -7,8 +7,8 @@ import inspect
 from typing import Callable
 from examples.parser import Parse
 
-def tool(func):
-    def wrapper(func: Callable):
+def tool(func: Callable | None = None):
+    def wrapper(func: Callable | None):
         spec = inspect.getfullargspec(func)
 
         doc = Parse(str(func.__doc__))

@@ -48,6 +48,7 @@ class PromptJob[MessageType: Message]:
         Returns:
         - Any: Result of running the job.
         """
+
         return self.Callback(self.ID, self.LLM, self.PrevResult, *args, **kwargs) # run the callback with necessary injections
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:

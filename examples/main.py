@@ -1,11 +1,10 @@
 import os
 import sys
 
-from pydantic_core import PydanticSerializationUnexpectedValue
-
 sys.path.append("../src")
 sys.path.append("../")
 
+from dotenv import load_dotenv
 from typing import Any
 from tinytune.llmcontext import LLMContext
 from examples.gptcontext import GPTContext, GPTMessage, Model
@@ -13,8 +12,7 @@ from tinytune.pipeline import Pipeline
 from tinytune.prompt import prompt_job, PromptJob
 
 from PerplexityContext import PerplexityContext, PerplexityMessage
-
-
+load_dotenv()
 gptContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")))
 
 def Callback(content):
@@ -75,6 +73,22 @@ def Main():
 def Test(id: str, context: GPTContext, prevResult: Any, *args):
     print("Job called: ", args)
 
-Test("hello world", foo="bar")
 
+@prompt_job(id="Chat", context=gptContext)
+def Chat(id, context: GPTContext, prevResult: Any, *args):
+    Running: bool = True
+
+    inp: str = input("> ")
+
+    def ExpressionCheck(message: GPTMessage):
+        return
+
+    context.Prompt(GPTMessage("system", "You are a great converstionist, you make a conversation out of anything. If what you said is repeated back to you, change the topic to something completely random.")).Run()
+
+    while (Running):
+        (context.Prompt(GPTMessage("user", context.Messages[-1].Content))
+            .Run(stream=True))
+
+
+Chat()
 # Main()
