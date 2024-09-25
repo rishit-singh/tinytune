@@ -73,7 +73,6 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
             self.Messages.append(self.MessageQueue[self.QueuePointer])
 
             isSearchMessage: bool = self.Messages[-1].Type == "search_message"
-
             messages = [message.ToDict() for message in self.Messages] + [
                 self.MessageQueue[self.QueuePointer].ToDict()
             ]
@@ -111,6 +110,16 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
                             f"Fetched content from {url}: {fetched_content}",
                         )
                     )
+
+                callbacks = self.CallbackStack.get(self.QueuePointer)
+
+                if callbacks:
+                    result = self.Messages[-1]
+
+                    for callback in callbacks:
+                        result = callback(self, result)
+
+                    self.CallbackStack.pop(self.QueuePointer)
 
             except Exception as e:
                 print(f"An error occurred: {e}")

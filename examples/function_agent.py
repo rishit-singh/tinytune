@@ -122,6 +122,8 @@ def Chat(context: LLMContext):
                 """,
         )
 
+        print(message.Content)
+
         return (context.Prompt(message)).Run(stream=True)
         # return GetVideos[0](func["params"]["query"], int(func["params"]["max"]))
 
@@ -223,6 +225,7 @@ def Foo(x: int, y: str, z: float):
     """
     A random function.
 
+
     Args:
         x - some int
         y - some string
@@ -230,4 +233,18 @@ def Foo(x: int, y: str, z: float):
     """
 
 
-Chat(LLM)
+# Chat(LLM)
+
+(
+    LLM.Prompt(
+        WebGroqMessage(
+            "user",
+            "You are a json based API. You give responses only in plain JSON text and nothing else.",
+        )
+    )
+    .Then(lambda context, message: message.Content)
+    .Then(lambda context, message: message.upper())
+    .Prompt(WebGroqMessage("user", sys.argv[1]))
+    .Then(lambda context, message: print(message.Content))
+    .Run()
+)

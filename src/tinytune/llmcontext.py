@@ -62,12 +62,11 @@ class LLMContext[MessageType]:
         self.MessageQueue: list[MessageType] = []
         self.Model: Model = model
         self.OnGenerateCallback: Callable[[list[str]], None] = lambda tokens : None
-        self.CallbackStack = []
+        self.CallbackStack: dict[int, list[Callable]] = {}
 
     def Top(self) -> MessageType:
         """
-        Get the top message in the context stack.
-
+        Get the top message in the context stack
         Returns:
         - MessageType: The top message in the context stack.
         """
@@ -106,11 +105,16 @@ class LLMContext[MessageType]:
 
         return self
 
-    def Then(self, callback: Callable[[MessageType], None]):
-        self.CallbackStack.append(callback)
+    def Then(self, callback: Callable):
+        key = len(self.MessageQueue) - 1
+
+        if key in self.CallbackStack:
+            self.CallbackStack[len(self.MessageQueue) - 1].append(callback)
+
+        else:
+            self.CallbackStack[key] = [ callback ]
 
         return self
-
 
     def Run(self, *args, **kwargs):
         """
@@ -119,4 +123,4 @@ class LLMContext[MessageType]:
         Returns:
         - Any: Result of running the model.
         """
-        return self
+        return
