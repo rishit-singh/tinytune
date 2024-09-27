@@ -22,16 +22,15 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-def Callback(chunk):
-    if chunk:
-        print(chunk, end="")
-
+def Callback(content: Any):
+    if content:
+        print(content, end="")
 
 LLM = WebGroqContext(model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ_KEY")))
-# LLM.OnGenerateCallback = Callback
+
+LLM.OnGenerate = Callback
 
 yt_api = YouTubeDataAPI(str(os.getenv("YT_KEY")))
-
 
 @tool
 def GetVideos(query: str, max: int) -> str:
@@ -94,37 +93,38 @@ def Chat(context: LLMContext):
 
     @prompt_job(id="Setup", context=context)
     def Setup(id: str, context: LLMContext, prevResult: Any, *args):
-        message = WebGroqMessage(
-            "user",
-            f"""
-                You have access to the following functions:
+        return (
+            context.Prompt(
+                WebGroqMessage(
+                    "user",
+                    f"""
+                        You have access to the following functions:
 
-                Use the following functions:
-                {json.dumps([ FunctionMap[key][1] for key in FunctionMap])}
+                        Use the following functions:
+                        {json.dumps([ FunctionMap[key][1] for key in FunctionMap])}
 
-                If you choose to call a function ONLY reply in the following format with no prefix or suffix:
+                        If you choose to call a function ONLY reply in the following format with no prefix or suffix:
 
-                {{
-                    "function": "function_name",
-                    "params": {{
-                        "param": "value"
-                    }}
-                }}
+                        {{
+                            "function": "function_name",
+                            "params": {{
+                                "param": "value"
+                            }}
+                        }}
 
-                Reminder:
-                - Function calls MUST follow the specified format.
-                - Required parameters MUST be specified
-                - Only call one function at a time
-                - Put the entire function call reply on one line
-                - If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
-                - Never make responses bigger than one paragraph if you dont have a function to call.
-                - Make sure the params of the function call you return are the same as the ones specified.
-                """,
-        )
+                        Reminder:
+                        - Function calls MUST follow the specified format.
+                        - Required parameters MUST be specified
+                        - Only call one function at a time
+                        - Put the entire function call reply on one line
+                        - If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls
+                        - Never make responses bigger than one paragraph if you dont have a function to call.
+                        - Make sure the params of the function call you return are the same as the ones specified.
+                        """,
+                )
+            )
+        ).Run(stream=True)
 
-        print(message.Content)
-
-        return (context.Prompt(message)).Run(stream=True)
         # return GetVideos[0](func["params"]["query"], int(func["params"]["max"]))
 
     @prompt_job(id="UserPrompt", context=context)
@@ -164,7 +164,7 @@ def Chat(context: LLMContext):
 
     Setup()
 
-    context.OnGenerateCallback = Callback
+    context.OnGenerate = Callback
 
     while Running:
         pipeline = Pipeline(llm=context)
@@ -184,7 +184,8 @@ def Analyze(context: LLMContext) -> Pipeline:
                 )
             )
             .Run(stream=True)
-            .Messages[-1]
+            .Then(lambda _, message: json.loads(message.Content))
+            .Messges[-1]
             .Content
         )
 
@@ -204,8 +205,33 @@ def Analyze(context: LLMContext) -> Pipeline:
 
     return pipeline.AddJob(Analyze).AddJob(Plot)
 
+@prompt_job(id="basic", context=LLM)
+def Prompt(id, context, prevResult, *args):
+    try:
+        context.Prompt(
+            WebGroqMessage(
+                "user",
+                "You're a JSON API. You always respond in JSON. No backticks, no explaination, just plain JSON text.",
+            )
+        ).Then(lambda _, message: json.loads(message.Content)).Then(
+            lambda _, message: print("\n", message)
+        ).Run(
+            stream=True
+        )
+    except Exception as e:
+        print(e)
+        Prompt()
 
-# pipe: Pipeline =
+@prompt_job(id="WriteTenDrafts", idea="Elon musk")
+def write_ten_drafts(id: str, context: WebGroqContext, prevResult: str, idea: str):
+    return context.Prompt(WebGroqMessage("user", f"Write a story about {idea}. The story should only be 3 paragraphs.")).Run(stream=True).Messages[-1].Content
+
+@prompt_job(id="ChooseBestDraft")
+def choose_the_best_draft(id: str, context: WebGroqContext, prevResult: list[str]):
+    return context.Prompt(WebGroqMessage("user", f"Choose the best draft from the following list:\n {'\n'.join(prevResult)}.")).Run(stream=True).Messages[-1].Content
+
+Pipeline(LLM).AddJob(write_ten_drafts).AddJob(choose_the_best_draft).Run(stream=True)
+
 #  Classifier(LLM, sys.argv[1])()
 # print(pipe)
 
@@ -219,32 +245,4 @@ def Analyze(context: LLMContext) -> Pipeline:
 
 #     fp.write(str(results))
 
-
-def Foo(x: int, y: str, z: float):
-    pass
-    """
-    A random function.
-
-
-    Args:
-        x - some int
-        y - some string
-        z - some float
-    """
-
-
 # Chat(LLM)
-
-(
-    LLM.Prompt(
-        WebGroqMessage(
-            "user",
-            "You are a json based API. You give responses only in plain JSON text and nothing else.",
-        )
-    )
-    .Then(lambda context, message: message.Content)
-    .Then(lambda context, message: message.upper())
-    .Prompt(WebGroqMessage("user", sys.argv[1]))
-    .Then(lambda context, message: print(message.Content))
-    .Run()
-)

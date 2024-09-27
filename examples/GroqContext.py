@@ -1,6 +1,6 @@
 import json
 from tinytune.llmcontext import LLMContext, Model, Message
-from typing import Callable, Any
+from typing import Callable, Any, override
 from groq import Groq
 
 
@@ -63,67 +63,56 @@ class WebGroqContext(LLMContext[WebGroqMessage]):
         self.Prompt(WebGroqMessage("user", query, "search_message"))
         return self
 
-    def Run(self, *args, **kwargs):
+    @override
+    def OnRun(self, *args, **kwargs):
+        messages = [message.ToDict() for message in self.Messages] + [
+            self.MessageQueue[self.QueuePointer].ToDict()
+        ]
+
         stream: bool | None = kwargs.get("stream")
 
         if stream is None:
             stream = False
 
-        while self.QueuePointer < len(self.MessageQueue):
-            self.Messages.append(self.MessageQueue[self.QueuePointer])
+        try:
+            response = self.client.chat.completions.create(
+                model=self.Model.Name,
+                messages=messages,
+                temperature=0,
+                stream=stream,
+            )
+
+            content = ""
 
             isSearchMessage: bool = self.Messages[-1].Type == "search_message"
-            messages = [message.ToDict() for message in self.Messages] + [
-                self.MessageQueue[self.QueuePointer].ToDict()
-            ]
 
-            try:
-                response = self.client.chat.completions.create(
-                    model=self.Model.Name,
-                    messages=messages,
-                    temperature=0,
-                    stream=stream,
+            if stream:
+                for chunk in response:
+                    chunk_content = chunk.choices[0].delta.content
+                    if chunk_content is not None:
+                        content += chunk_content
+                        self.OnGenerate(chunk_content)
+            else:
+                content = response.choices[0].message.content
+                self.OnGenerate(content)
+
+            if content != "" and content:
+                self.Messages.append(WebGroqMessage("assistant", ""))
+                self.Messages[-1].Content = content
+
+            # Handle search messages with manual function call
+            if isSearchMessage and content.startswith("FETCH:"):
+                url = content[6:].strip()
+                fetched_content = self.FetchURL(url)
+                self.Messages.append(
+                    WebGroqMessage(
+                        "assistant",
+                        f"Fetched content from {url}: {fetched_content}",
+                    )
                 )
 
-                content = ""
-                if stream:
-                    for chunk in response:
-                        chunk_content = chunk.choices[0].delta.content
-                        if chunk_content is not None:
-                            content += chunk_content
-                            self.OnGenerateCallback(chunk_content)
-                else:
-                    content = response.choices[0].message.content
-                    self.OnGenerateCallback(content)
+        except Exception as e:
+            print(f"An error occurred: {e}")
+            raise e
 
-                if content != "" and content:
-                    self.Messages.append(WebGroqMessage("assistant", ""))
-                    self.Messages[-1].Content = content
-
-                # Handle search messages with manual function call
-                if isSearchMessage and content.startswith("FETCH:"):
-                    url = content[6:].strip()
-                    fetched_content = self.FetchURL(url)
-                    self.Messages.append(
-                        WebGroqMessage(
-                            "assistant",
-                            f"Fetched content from {url}: {fetched_content}",
-                        )
-                    )
-
-                callbacks = self.CallbackStack.get(self.QueuePointer)
-
-                if callbacks:
-                    result = self.Messages[-1]
-
-                    for callback in callbacks:
-                        result = callback(self, result)
-
-                    self.CallbackStack.pop(self.QueuePointer)
-
-            except Exception as e:
-                print(f"An error occurred: {e}")
-
-            self.QueuePointer += 1
-
-        return self
+        return WebGroqMessage("assistant", content)

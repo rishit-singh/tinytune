@@ -1,3 +1,4 @@
+from logging import WARN
 from typing import Callable, Any
 from dataclasses import dataclass
 import json
@@ -61,8 +62,9 @@ class LLMContext[MessageType]:
         self.Messages: list[MessageType] = []
         self.MessageQueue: list[MessageType] = []
         self.Model: Model = model
-        self.OnGenerateCallback: Callable[[list[str]], None] = lambda tokens : None
+        self.QueuePointer: int = 0
         self.CallbackStack: dict[int, list[Callable]] = {}
+
 
     def Top(self) -> MessageType:
         """
@@ -103,8 +105,6 @@ class LLMContext[MessageType]:
             print(f"An error occurred in saving messages: {e.args[0]}")
             return self
 
-        return self
-
     def Then(self, callback: Callable):
         key = len(self.MessageQueue) - 1
 
@@ -116,6 +116,13 @@ class LLMContext[MessageType]:
 
         return self
 
+    def OnGenerate(self, content: Any):
+        return
+
+    def OnRun(self, *args, **kwargs) -> Any:
+
+        return
+
     def Run(self, *args, **kwargs):
         """
         Placeholder method for running the model.
@@ -123,4 +130,21 @@ class LLMContext[MessageType]:
         Returns:
         - Any: Result of running the model.
         """
-        return
+        while self.QueuePointer < len(self.MessageQueue):
+            self.Messages.append(self.MessageQueue[self.QueuePointer])
+
+            result = self.OnRun(args, kwargs)
+
+            callbacks = self.CallbackStack.get(self.QueuePointer)
+
+            if callbacks:
+                result = self.Messages[-1]
+
+                for callback in callbacks:
+                    result = callback(self, result)
+                self.CallbackStack.pop(self.QueuePointer)
+
+            self.Messages.append(result)
+            self.QueuePointer += 1
+
+        return self

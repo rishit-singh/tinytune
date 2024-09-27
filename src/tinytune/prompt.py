@@ -1,3 +1,4 @@
+import inspect
 from typing import Any, Callable, Union
 from tinytune.llmcontext import LLMContext, Message
 from functools import wraps
@@ -23,7 +24,7 @@ class PromptJob[MessageType: Message]:
     """
     Represents a job to execute prompts within a context.
     """
-    def __init__(self, callback, id: str, llm: LLMContext[MessageType], prevResult: list[Any]):
+    def __init__(self, callback, id: str, llm: LLMContext[MessageType], prevResult: list[Any], *args, **kwargs):
         """
         Initialize a PromptJob object.
 
@@ -35,9 +36,24 @@ class PromptJob[MessageType: Message]:
         self.ID: str = id
         self.LLM: LLMContext[MessageType] = llm
         self.PrevResult: list[Any] = prevResult
-        self.Callback: Callable[[str, LLMContext, list[Any], tuple | None, dict | None], None] = callback
+        self.Callback: Callable[..., None] = callback
 
-    def Run(self, *args: Any, **kwargs) -> Any:
+        kw = kwargs
+        ar = []
+
+        l = len(args)
+
+        if (len(args) >= 1):
+            if (len(args) >= 2):
+                ar.extend(args[0])
+                for key in args[1]:
+                    kw[key] = args[1][key]
+            else:
+                ar.extend(args[0])
+
+        self.Args = (ar, kw)
+
+    def Run(self, *args: Any) -> Any:
         """
         Run the prompt job.
 
@@ -49,7 +65,23 @@ class PromptJob[MessageType: Message]:
         - Any: Result of running the job.
         """
 
-        return self.Callback(self.ID, self.LLM, self.PrevResult, *args, **kwargs) # run the callback with necessary injections
+        callArgs = list([ self.ID, self.LLM, self.PrevResult ]) # required params
+        callArgs.extend(args[0])
+        callArgs.extend(self.Args[0])
+
+        kwCallArgs = args[1]
+        kwargs = self.Args[1]
+
+        for key in kwargs:
+            kwCallArgs[key] = kwargs[key]
+
+        params = inspect.signature(self.Callback).parameters
+
+        for key in args[1]:
+            if (key in params):
+                return self.Callback(*callArgs, **kwCallArgs)
+
+        return self.Callback(*callArgs)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -70,12 +102,11 @@ def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = 
     Parameters:
     - id (str, optional): Identifier for the job.
     - context (LLMContext, optional): Language model context.
-    - prevResult (Any, optional): Previous result.
-
+    - prevResult (Any, optional): Previous result
     Returns:
     - Callable: Decorated function.
     """
-    def wrapper(func: Callable[[str, LLMContext, list[Any]], Any]):
-        return PromptJob[MessageType](func, id, context, None)
+    def wrapper(func: Callable[..., Any]):
+        return PromptJob[MessageType](func, id, context, None, args, kwargs)
 
     return wrapper
