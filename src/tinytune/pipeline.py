@@ -17,11 +17,11 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         self.Jobs: list[PromptJob] = list[PromptJob]()
         self.Results: dict[str, list[Any]] = dict[str, list[Any]]()
         self.LLM: LLMContext = llm
-        self.IsRunning: bool = False 
+        self.IsRunning: bool = False
 
-    def AddJob(self, job: Callable[[str, LLMContext[MessageType]], Any]):
+    def AddJob(self, job: Callable[[str, LLMContext[MessageType]], Any], *args, **kwargs):
         """
-        Add a job to the pipeline. 
+        Add a job to the pipeline.
 
         Parameters:
         - job (Callable[[str, LLMContext[MessageType]], Any]): The job to add.
@@ -31,15 +31,31 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         """
         promptJob: PromptJob[MessageType] = job
 
-        if promptJob.ID is None:
-            promptJob.ID = f"job-{len(self.Jobs)}"
-        
-        if promptJob.LLM is None:
-            promptJob.LLM = self.LLM
-        
-        self.Jobs.append(promptJob)    
+        kw = kwargs
+        ar = []
 
-        return self 
+        l = len(args)
+
+        if (len(args) >= 1):
+            if (len(args) >= 2):
+                ar.extend(args[0])
+
+                for key in args[1]:
+                    kw[key] = args[1][key]
+            else:
+                ar.extend(args[0])
+
+        promptJob.Args = (ar, kw)
+
+        if not(promptJob.ID):
+            promptJob.ID = f"job-{len(self.Jobs)}"
+
+        if not(promptJob.LLM) :
+            promptJob.LLM = self.LLM
+
+        self.Jobs.append(promptJob)
+
+        return self
 
     def Run(self, *args, **kwargs) -> list[dict[str, str]]:
         """
@@ -55,9 +71,9 @@ class Pipeline[MessageType](PromptJob[MessageType]):
         for job in self.Jobs:
             try:
                 job.PrevResult = prevResult
-               
+
                 prevResult = job()
-    
+
                 if job.ID not in self.Results:
                     self.Results[job.ID] = []
 
@@ -65,11 +81,11 @@ class Pipeline[MessageType](PromptJob[MessageType]):
 
             except Exception as e:
                 raise Exception(f"Unhandled exception occurred at job \"{job.ID}\".\nBacktrace: {[job.ID for job in self.Jobs[count:]]}")
-            
+
             count += 1
 
         return prevResult
-    
+
     def Save(self, promptFile: str = "prompts.json"):
         """
         Save the prompts to a file.

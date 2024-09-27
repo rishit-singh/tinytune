@@ -46,6 +46,7 @@ class PromptJob[MessageType: Message]:
         if (len(args) >= 1):
             if (len(args) >= 2):
                 ar.extend(args[0])
+
                 for key in args[1]:
                     kw[key] = args[1][key]
             else:
@@ -66,6 +67,7 @@ class PromptJob[MessageType: Message]:
         """
 
         callArgs = list([ self.ID, self.LLM, self.PrevResult ]) # required params
+
         callArgs.extend(args[0])
         callArgs.extend(self.Args[0])
 
@@ -80,6 +82,8 @@ class PromptJob[MessageType: Message]:
         for key in args[1]:
             if (key in params):
                 return self.Callback(*callArgs, **kwCallArgs)
+
+        print(callArgs)
 
         return self.Callback(*callArgs)
 

@@ -222,24 +222,25 @@ def Prompt(id, context, prevResult, *args):
         print(e)
         Prompt()
 
-@prompt_job(id="WriteTenDrafts", idea="Elon musk")
+@prompt_job(id="WriteTenDrafts")
 def write_ten_drafts(id: str, context: WebGroqContext, prevResult: str, idea: str):
+    print()
+
     return context.Prompt(WebGroqMessage("user", f"Write a story about {idea}. The story should only be 3 paragraphs.")).Run(stream=True).Messages[-1].Content
 
 @prompt_job(id="ChooseBestDraft")
 def choose_the_best_draft(id: str, context: WebGroqContext, prevResult: list[str]):
     return context.Prompt(WebGroqMessage("user", f"Choose the best draft from the following list:\n {'\n'.join(prevResult)}.")).Run(stream=True).Messages[-1].Content
 
-Pipeline(LLM).AddJob(write_ten_drafts).AddJob(choose_the_best_draft).Run(stream=True)
+Pipeline(LLM).AddJob(write_ten_drafts, idea="Elon Musk and Mark Zuckerberg").AddJob(choose_the_best_draft).Run(stream=True)
 
 #  Classifier(LLM, sys.argv[1])()
-# print(pipe)
-
+# print(pipe
 # print('\n', LLM.Messages[-1].Content)
 # with open("plot.py", 'w') as fp:
 #     pipeline = Pipeline(LLM)
 
-#     results = (pipeline.AddJob(Classifier(LLM, GetVideos("AI alignment", 155555)))
+#     results = (pipeline.AddJob(Classifier(LLM, GetVideos("AI alignment", 155555))):
 #                         .AddJob(Analyzer(LLM))
 #                         .Run(stream=True))
 

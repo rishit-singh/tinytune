@@ -2,10 +2,12 @@ from typing import Callable, Any
 from concurrent.futures import ThreadPoolExecutor, Future, as_completed
 from tinytune.llmcontext import LLMContext
 
+
 class ParallelRunner:
     """
     Represents a parallel runner for executing jobs concurrently.
     """
+
     def __init__(self, llm: LLMContext) -> None:
         """
         Initialize a ParallelRunner object.
@@ -17,7 +19,7 @@ class ParallelRunner:
         self.Futures: list[Future]
         self.Pool: ThreadPoolExecutor = None
         self.GPT: LLMContext = llm
-        self.Results: list = [] 
+        self.Results: list = []
 
     def GetCompleted(self, onWait: Callable[[Any], Any] = None):
         """
@@ -57,7 +59,7 @@ class ParallelRunner:
         - ParallelRunner: The ParallelRunner object.
         """
         self.Jobs.append(job)
-        return self 
+        return self
 
     def Run(self, onWait: Callable[[Any], Any] = None) -> bool:
         """
@@ -72,13 +74,13 @@ class ParallelRunner:
         """
         try:
             self.Pool = ThreadPoolExecutor(max_workers=len(self.Jobs))
-            self.Futures = [self.Pool.submit(job, self.GPT) for job in self.Jobs] 
+            self.Futures = [self.Pool.submit(job, self.GPT) for job in self.Jobs]
 
             for future in self.GetCompleted(onWait):
                 self.Results.append(future.result())
 
             self.OnComplete()
- 
+
         except Exception as e:
             raise e
 
