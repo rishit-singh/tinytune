@@ -30,6 +30,8 @@ LLM = WebGroqContext(model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ
 
 LLM.OnGenerate = Callback
 
+LLM1 = WebGroqContext(model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ_KEY")))
+
 yt_api = YouTubeDataAPI(str(os.getenv("YT_KEY")))
 
 @tool
@@ -76,17 +78,29 @@ def GetVideos(query: str, max: int) -> str:
 
     return result
 
-
-class ToolManager:
-    ToolMap: dict = {}
-
-    @staticmethod
-    def Call(tool: dict):
-        return
-
-
 FunctionMap = yt_api.get_function_map()
 
+@tool
+@prompt_job(id="Prompt", context=LLM1)
+def Prompt(id, context, prevResult, input: str):
+    return context.Prompt(
+        WebGroqMessage(
+            "user",
+            "You're Geohot, you only talk like him.",
+        )
+    ).Run(
+        stream=True
+    ).Prompt(WebGroqMessage("user", input)).Run(stream=True).Messages[-1].Content
+
+
+FunctionMap["Prompt"] = Prompt
+
+@tool
+@prompt_job("ExplainDescription", context=LLM1)
+def DescriptionExplanation(id, context, prevResult, description: str):
+    return context.Prompt(WebGroqMessage("user", "You are a Youtube expert. You acccept video descriptions and give out explanantions")).Prompt(WebGroqMessage("user", description)).Run(stream=True).Messages[-1].Content
+
+FunctionMap["ExplainDescription"] = DescriptionExplanation
 
 def Chat(context: LLMContext):
     Running = True
@@ -126,7 +140,6 @@ def Chat(context: LLMContext):
         ).Run(stream=True)
 
         # return GetVideos[0](func["params"]["query"], int(func["params"]["max"]))
-
     @prompt_job(id="UserPrompt", context=context)
     def UserPrompt(id: str, context: LLMContext, prevResult: Any, *args):
         inp = input("\n> ")
@@ -148,18 +161,28 @@ def Chat(context: LLMContext):
 
     @prompt_job(id="Execute", context=context)
     def Execute(id: str, context: LLMContext, prevResult: Any, *args):
+        func: dict = {}
+
         try:
             func: dict = json.loads(str(prevResult))
 
-            print("Response: ", func)
-
             resp = json.dumps(yt_api.call_method(func))
 
-            print(resp)
-
             context.Messages.append(WebGroqMessage("assistant", resp))
+
+        except ValueError as e:
+            function_name = func.get("function")
+
+            if (function_name == "Prompt"):
+                params = func.get("params", {})
+
+                params.pop("self")
+
+                result = FunctionMap[str(function_name)][0](**params)
+
+                context.Messages.append(WebGroqMessage("assistant", result))
+
         except Exception as e:
-            # print(e)'
             pass
 
     Setup()
@@ -169,58 +192,6 @@ def Chat(context: LLMContext):
     while Running:
         pipeline = Pipeline(llm=context)
         pipeline.AddJob(UserPrompt).AddJob(Execute).Run(stream=True)
-
-
-# Agent 2
-def Analyze(context: LLMContext) -> Pipeline:
-    pipeline = Pipeline(context)
-
-    @prompt_job(id="Analyze", context=context)
-    def Analyze(id: str, context: LLMContext, prevResult: Any, *args):
-        return (
-            context.Prompt(
-                WebGroqMessage(
-                    "user", "Generate an analysis based on the video data you've given"
-                )
-            )
-            .Run(stream=True)
-            .Then(lambda _, message: json.loads(message.Content))
-            .Messges[-1]
-            .Content
-        )
-
-    @prompt_job(id="Analyze", context=context)
-    def Plot(id: str, context: LLMContext, prevResult: Any, *args):
-        return (
-            context.Prompt(
-                WebGroqMessage(
-                    "user",
-                    "Generate python3 code to plot this info in a 3D chart, return with just plain python code, no backticks, nothing extra.",
-                )
-            )
-            .Run(stream=True)
-            .Messages[-1]
-            .Content
-        )
-
-    return pipeline.AddJob(Analyze).AddJob(Plot)
-
-@prompt_job(id="basic", context=LLM)
-def Prompt(id, context, prevResult, *args):
-    try:
-        context.Prompt(
-            WebGroqMessage(
-                "user",
-                "You're a JSON API. You always respond in JSON. No backticks, no explaination, just plain JSON text.",
-            )
-        ).Then(lambda _, message: json.loads(message.Content)).Then(
-            lambda _, message: print("\n", message)
-        ).Run(
-            stream=True
-        )
-    except Exception as e:
-        print(e)
-        Prompt()
 
 @prompt_job(id="WriteTenDrafts")
 def write_ten_drafts(id: str, context: WebGroqContext, prevResult: str, idea: str):
@@ -232,18 +203,4 @@ def write_ten_drafts(id: str, context: WebGroqContext, prevResult: str, idea: st
 def choose_the_best_draft(id: str, context: WebGroqContext, prevResult: list[str]):
     return context.Prompt(WebGroqMessage("user", f"Choose the best draft from the following list:\n {'\n'.join(prevResult)}.")).Run(stream=True).Messages[-1].Content
 
-Pipeline(LLM).AddJob(write_ten_drafts, idea="Elon Musk and Mark Zuckerberg").AddJob(choose_the_best_draft).Run(stream=True)
-
-#  Classifier(LLM, sys.argv[1])()
-# print(pipe
-# print('\n', LLM.Messages[-1].Content)
-# with open("plot.py", 'w') as fp:
-#     pipeline = Pipeline(LLM)
-
-#     results = (pipeline.AddJob(Classifier(LLM, GetVideos("AI alignment", 155555))):
-#                         .AddJob(Analyzer(LLM))
-#                         .Run(stream=True))
-
-#     fp.write(str(results))
-
-# Chat(LLM)
+Chat(LLM)

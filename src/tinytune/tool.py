@@ -2,6 +2,7 @@ import sys
 
 import inspect
 from typing import Callable
+from tinytune.prompt import PromptJob
 
 
 def Parse(docString: str) -> dict:
@@ -53,7 +54,17 @@ def Parse(docString: str) -> dict:
 
 def tool(func: Callable | None = None):
     def wrapper(func: Callable | None):
-        spec = inspect.getfullargspec(func)
+        if isinstance(func, PromptJob):
+            spec = inspect.getfullargspec(func.Callback)
+
+            for key in ["id", "context", "prevResult"]:
+                if key in spec.annotations:
+                    spec.annotations.pop(key)
+
+            print(spec.annotations)
+
+        else:
+            spec = inspect.getfullargspec(func)
 
         doc = Parse(str(func.__doc__))
 

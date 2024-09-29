@@ -34,6 +34,8 @@ class PromptJob[MessageType: Message]:
         """
 
         self.ID: str = id
+        self.__name__ = self.ID
+
         self.LLM: LLMContext[MessageType] = llm
         self.PrevResult: list[Any] = prevResult
         self.Callback: Callable[..., None] = callback
@@ -45,9 +47,8 @@ class PromptJob[MessageType: Message]:
 
         if (len(args) >= 1):
             if (len(args) >= 2):
-                ar.extend(args[0])
-
-                for key in args[1]:
+                ar.extend(args[0]) # add args from previous one
+            for key in args[1]:
                     kw[key] = args[1][key]
             else:
                 ar.extend(args[0])
@@ -67,7 +68,6 @@ class PromptJob[MessageType: Message]:
         """
 
         callArgs = list([ self.ID, self.LLM, self.PrevResult ]) # required params
-
         callArgs.extend(args[0])
         callArgs.extend(self.Args[0])
 
@@ -82,8 +82,6 @@ class PromptJob[MessageType: Message]:
         for key in args[1]:
             if (key in params):
                 return self.Callback(*callArgs, **kwCallArgs)
-
-        print(callArgs)
 
         return self.Callback(*callArgs)
 
