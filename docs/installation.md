@@ -34,10 +34,8 @@ To install TinyTune, you can use pip, the Python package installer.
 If you want to contribute to TinyTune or use the latest development version, you can install it directly from the GitHub repository:
 
 ```bash
-pip install git+https://github.com/yourusername/tinytune.git
+pip install git+https://github.com/rishit-singh/tinytune.git
 ```
-
-Replace `yourusername` with the actual GitHub username or organization where TinyTune is hosted.
 
 ## Next Steps
 
