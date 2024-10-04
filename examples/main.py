@@ -7,13 +7,16 @@ sys.path.append("../")
 from dotenv import load_dotenv
 from typing import Any
 from tinytune.llmcontext import LLMContext
-from examples.gptcontext import GPTContext, GPTMessage, Model
+from examples.gptcontext import GPTContext, Model
+from examples.ollama_context import OllamaContext, OllamaMessage
 from tinytune.pipeline import Pipeline
 from tinytune.prompt import prompt_job, PromptJob
 
 from PerplexityContext import PerplexityContext, PerplexityMessage
+
 load_dotenv()
-gptContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")))
+
+gptContext = OllamaContext(f"https://api.cloudflare.com/client/v4/accounts/{os.getenv("CLOUDFLARE_ID")}/ai/v1", "@cf/meta/llama-3.1-70b-instruct", str(os.getenv("CLOUDFLARE_KEY")))
 
 def Callback(content):
     if content != None:
@@ -21,10 +24,11 @@ def Callback(content):
     else:
         print()
 
-gptContext.OnGenerateCallback = Callback
+
+gptContext.OnGenerate = Callback
 
 def Main():
-    gptContext = GPTContext("gpt-4o", str(os.getenv("OPENAI_KEY")))
+    gptContext = OllamaContext("http://localhost:11434/v1/", "llama3.2:1b")
     pContext = PerplexityContext(
         "llama-3-sonar-large-32k-online", str(os.getenv("PERPLEXITY_KEY"))
     )
@@ -35,14 +39,14 @@ def Main():
         else:
             print()
 
-    gptContext.OnGenerateCallback = Callback
-    pContext.OnGenerateCallback = Callback
+    gptContext.OnGenerate = Callback
+    pContext.OnGenerate = Callback
 
     @prompt_job(id="search", context=gptContext)
     def Job(id: str, context: GPTContext, prevResult: Any):
         (
             context.Prompt(
-                GPTMessage(
+                OllamaMessage(
                     "user", f"Get me the latest top most news on f{sys.argv[1]}. "
                 )
             ).Run(stream=True)
@@ -54,7 +58,7 @@ def Main():
     def Job1(id: str, context: GPTContext, prevResult: Any):
         (
             context.Prompt(
-                GPTMessage(
+                OllamaMessage(
                     "user",
                     f"""{prevResult.Content} extract this data into JSON, and only return the JSON, no formatting, backticks, or explanation""",
                 )
@@ -69,26 +73,27 @@ def Main():
 
     return pipeline
 
+
 @prompt_job(id="test", context=gptContext)
-def Test(id: str, context: GPTContext, prevResult: Any, *args):
-    print("Job called: ", args)
+def Test(id: str, context: OllamaContext, prevResult: Any, param: str):
+    print("Job called: ", param)
 
 
 @prompt_job(id="Chat", context=gptContext)
-def Chat(id, context: GPTContext, prevResult: Any, *args):
+def Chat(id, context: OllamaContext, prevResult: Any, *args):
     Running: bool = True
 
-    inp: str = input("> ")
+    while Running:
+        print()
 
-    def ExpressionCheck(message: GPTMessage):
-        return
+        (
+            context.Prompt(OllamaMessage("user", input("> "))).Run(
+                stream=True
+            )
+        )
 
-    context.Prompt(GPTMessage("system", "You are a great converstionist, you make a conversation out of anything. If what you said is repeated back to you, change the topic to something completely random.")).Run()
 
-    while (Running):
-        (context.Prompt(GPTMessage("user", context.Messages[-1].Content))
-            .Run(stream=True))
-
+# Pipeline(gptContext).AddJob(Test, param="random").Run(stream=True)
 
 Chat()
 # Main()

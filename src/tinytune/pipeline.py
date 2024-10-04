@@ -47,6 +47,8 @@ class Pipeline[MessageType](PromptJob[MessageType]):
 
         promptJob.Args = (ar, kw)
 
+        print(promptJob)
+
         if not(promptJob.ID):
             promptJob.ID = f"job-{len(self.Jobs)}"
 

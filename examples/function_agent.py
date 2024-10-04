@@ -26,13 +26,17 @@ def Callback(content: Any):
     if content:
         print(content, end="")
 
+
 LLM = WebGroqContext(model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ_KEY")))
 
 LLM.OnGenerate = Callback
 
-LLM1 = WebGroqContext(model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ_KEY")))
+LLM1 = WebGroqContext(
+    model="llama-3.1-70b-versatile", apiKey=str(os.getenv("GROQ_KEY"))
+)
 
 yt_api = YouTubeDataAPI(str(os.getenv("YT_KEY")))
+
 
 @tool
 def GetVideos(query: str, max: int) -> str:
@@ -78,29 +82,50 @@ def GetVideos(query: str, max: int) -> str:
 
     return result
 
+
 FunctionMap = yt_api.get_function_map()
+
 
 @tool
 @prompt_job(id="Prompt", context=LLM1)
 def Prompt(id, context, prevResult, input: str):
-    return context.Prompt(
-        WebGroqMessage(
-            "user",
-            "You're Geohot, you only talk like him.",
+    return (
+        context.Prompt(
+            WebGroqMessage(
+                "user",
+                "You're Geohot, you only talk like him.",
+            )
         )
-    ).Run(
-        stream=True
-    ).Prompt(WebGroqMessage("user", input)).Run(stream=True).Messages[-1].Content
+        .Run(stream=True)
+        .Prompt(WebGroqMessage("user", input))
+        .Run(stream=True)
+        .Messages[-1]
+        .Content
+    )
 
 
 FunctionMap["Prompt"] = Prompt
 
+
 @tool
 @prompt_job("ExplainDescription", context=LLM1)
 def DescriptionExplanation(id, context, prevResult, description: str):
-    return context.Prompt(WebGroqMessage("user", "You are a Youtube expert. You acccept video descriptions and give out explanantions")).Prompt(WebGroqMessage("user", description)).Run(stream=True).Messages[-1].Content
+    return (
+        context.Prompt(
+            WebGroqMessage(
+                "user",
+                "You are a Youtube expert. You acccept video descriptions and give out explanantions",
+            )
+        )
+        .Prompt(WebGroqMessage("user", description))
+        .Run(stream=True)
+        .Messages[-1]
+        .Content
+    )
+
 
 FunctionMap["ExplainDescription"] = DescriptionExplanation
+
 
 def Chat(context: LLMContext):
     Running = True
@@ -140,6 +165,7 @@ def Chat(context: LLMContext):
         ).Run(stream=True)
 
         # return GetVideos[0](func["params"]["query"], int(func["params"]["max"]))
+
     @prompt_job(id="UserPrompt", context=context)
     def UserPrompt(id: str, context: LLMContext, prevResult: Any, *args):
         inp = input("\n> ")
@@ -173,7 +199,7 @@ def Chat(context: LLMContext):
         except ValueError as e:
             function_name = func.get("function")
 
-            if (function_name == "Prompt"):
+            if function_name == "Prompt":
                 params = func.get("params", {})
 
                 params.pop("self")
@@ -191,16 +217,7 @@ def Chat(context: LLMContext):
 
     while Running:
         pipeline = Pipeline(llm=context)
-        pipeline.AddJob(UserPrompt).AddJob(Execute).Run(stream=True)
+        pipeline.AddJob(UserPrompt, "random").AddJob(Execute).Run(stream=True)
 
-@prompt_job(id="WriteTenDrafts")
-def write_ten_drafts(id: str, context: WebGroqContext, prevResult: str, idea: str):
-    print()
-
-    return context.Prompt(WebGroqMessage("user", f"Write a story about {idea}. The story should only be 3 paragraphs.")).Run(stream=True).Messages[-1].Content
-
-@prompt_job(id="ChooseBestDraft")
-def choose_the_best_draft(id: str, context: WebGroqContext, prevResult: list[str]):
-    return context.Prompt(WebGroqMessage("user", f"Choose the best draft from the following list:\n {'\n'.join(prevResult)}.")).Run(stream=True).Messages[-1].Content
 
 Chat(LLM)

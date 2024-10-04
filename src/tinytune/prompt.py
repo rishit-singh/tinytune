@@ -90,7 +90,7 @@ class PromptJob[MessageType: Message]:
         Parameters:
         - args (Any): Arguments to the job.
         - kwargs (Any): Keyword arguments to the job.
-
+8
         Returns:
         - Any: Result of calling the job.
         """
