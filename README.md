@@ -1,236 +1,192 @@
 # TinyTune
 
-TinyTune is a lightweight, flexible library designed for prompt tuning and orchestrating complex interactions with Language Models (LLMs). It enables the use of Python functions as prompt sequences within an LLM-agnostic pipeline, allowing for modular and organized development of prompt-based workflows.
+TinyTune is a lightweight, flexible library designed to make prompt engineering and workflow orchestration with Large Language Models (LLMs) more structured and manageable. It provides a simple, model-agnostic way to:
 
-## Key Features
+- Organize your LLM prompts into modular **prompt jobs**
+- Chain these jobs together in **pipelines**
+- Incorporate **tools**—simple Python functions callable by LLMs—to extend capabilities
 
-- **LLM-agnostic**: Works with various Language Model contexts (e.g., GPT, Perplexity)
-- **Prompt Jobs**: Encapsulate specific tasks or actions within the pipeline
-- **Pipelines**: Manage and execute sequences of prompt jobs
-- **Flexible Context Management**: Handle different types of LLM contexts
-- **Tool Integration**: Easily convert functions into callable tools for language models
+**Why use TinyTune?**  
+Instead of scattering prompt strings all over your code, TinyTune lets you maintain clarity and reusability. Prompt jobs are defined as functions, pipelines manage sequences of these jobs, and tools let you seamlessly integrate external functionalities.
 
-## Core Components
+# Getting Started
+
+## Installation
+
+Install TinyTune via pip:
+
+```bash
+pip install tinytune
+```
+
+## Key Concepts
 
 ### LLMContext
+**LLMContext** is your interface to a language model. It handles sending messages to the model and receiving responses. You can use different backends (e.g., GPT, other APIs) without changing the rest of your code.
 
-The `LLMContext` class represents a context for a language model. It manages messages, a message queue, and callbacks.
+Example:
+```python
+from tinytune.contexts import GPTContext
 
-Key methods:
-
-- `Prompt`: Adds a message to the queue
-- `Run`: Executes the model on the queued messages
-- `Save`: Saves messages to a JSON file
+# Initialize a GPTContext with your model name and API key
+context = GPTContext("o1-mini", "YOUR_OPENAI_API_KEY")
+```
 
 ### Prompt Jobs
+A **prompt job** is a function that:
+- Takes a context and an optional previous result.
+- Sends one or more messages to the LLM.
+- Returns the LLM’s response.
 
-Prompt jobs are functions designed to execute user-defined prompts on the specified LLM and enable performing logic on the results. They are crucial for orchestrating complex interactions with the language model.
+You define a prompt job using the `@prompt_job` decorator. The `id` parameter uniquely identifies the job, and `context` specifies which LLM context it uses.
 
-#### Defining Prompt Jobs
-
-Use the `@prompt_job` decorator to define prompt jobs:
+Example:
 
 ```python
-llmContext = LLMContext()
+from tinytune import prompt_job, Message, LLMContext
 
-@prompt_job(id="search", context=llmContext)
-def Job(id: str, context: LLMContext, prevResult: Any):
-    return (context.Prompt(Message("user", "Do XYZ"))
+@prompt_job(id="summarize", context=context)
+def SummarizeJob(id: str, context: LLMContext, prevResult: any):
+    return (context
+            .Prompt(Message("user", "Summarize the latest AI trends"))
             .Run(stream=True)
             .Messages[-1])
 ```
 
 ### Pipelines
+A **pipeline** chains multiple prompt jobs together. The output of each job is passed as `prevResult` to the next job, allowing you to build complex workflows step-by-step.
 
-A pipeline is a managed container that maintains a queue of prompt jobs and runs them in sequence. The results of each job are passed to the next one in the queue.
-
-#### Defining Pipelines
-
-Create a pipeline and add prompt jobs to it:
-
+Example:
 ```python
-pipeline: Pipeline = Pipeline(context)
-(pipeline.AddJob(Job)
-        .AddJob(Job1))  # Job and Job1 are prompt jobs
+from tinytune import Pipeline
+
+pipeline = Pipeline(context)
+pipeline.AddJob(SummarizeJob)
+
+result = pipeline.Run()
+print(result.Content)
 ```
+
+This pipeline runs the `SummarizeJob` and prints the model’s summarized response.
 
 ### Tools
+A **tool** is a Python function that the LLM can invoke as part of your prompt jobs. Tools let you integrate external data or functionality into your LLM workflows. By decorating a Python function with `@tool`, you provide metadata that TinyTune can use to incorporate it into prompts and pipelines easily.
 
-Tools in TinyTune are functions decorated with the `@tool` decorator. This decorator extracts metadata from the function's docstring, making it easier to integrate custom functions into your LLM workflows. Tools can be used to extend the capabilities of your language model by allowing it to perform specific actions or retrieve information.
-
-#### Creating a Tool
-
-To create a tool, use the `@tool` decorator on a function:
+For example, let’s create a simple tool that returns the current date. While this is a trivial tool, it illustrates the concept. In a real scenario, you could integrate APIs or complex logic.
 
 ```python
 from tinytune.tool import tool
+from datetime import date
 
 @tool
-def search_videos(query, max_results=5, order="relevance"):
+def get_current_date():
     """
-    Searches for videos based on the given query and parameters.
-    Args:
-        query (str): The search query.
-        max_results (int): Maximum number of results to return.
-        order (str): The order of the search results.
+    Returns the current date as a string.
     Returns:
-        list: A list of dictionaries containing video information.
+        str: The current date in YYYY-MM-DD format.
     """
-    # Implementation here
+    return date.today().isoformat()
 ```
 
-#### Example: YouTube Data API Tool
+You can now use this tool within a prompt job, like so:
 
-Here's an example of a more complex tool that interacts with the YouTube Data API:
+```python
+@prompt_job(id="date_summary", context=context)
+def DateSummaryJob(id: str, context: LLMContext, prevResult: any):
+    # Call the tool directly in Python:
+    today = get_current_date()
+    
+    # Use the tool's result in your prompt
+    return (context
+            .Prompt(Message("user", f"Given that today's date is {today}, summarize today's world news."))
+            .Run(stream=True)
+            .Messages[-1])
+```
+
+Then, in your pipeline:
+```python
+pipeline = Pipeline(context)
+pipeline.AddJob(DateSummaryJob)
+
+result = pipeline.Run()
+print(result.Content)
+```
+
+The LLM will see the current date in its prompt and can incorporate that into its response.
+
+## Putting It All Together
+
+Here’s a minimal end-to-end example:
 
 ```python
 import os
-from googleapiclient.discovery import build
+from tinytune import GPTContext, Pipeline, prompt_job, Message
 from tinytune.tool import tool
+from datetime import date
 
-class YouTubeDataAPI:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        self.youtube = build("youtube", "v3", developerKey=self.api_key)
+# 1. Create the LLM context
+context = GPTContext("o1-mini", os.getenv("OPENAI_API_KEY"))
 
-    @tool
-    def search_videos(self, query, max_results=5, order="relevance", video_duration="any", video_type="any"):
-        """
-        Searches for videos based on the given query and parameters.
-        Args:
-            query (str): The search query.
-            max_results (int): Maximum number of results to return.
-            order (str): The order of the search results.
-            video_duration (str): Duration of the videos to search for.
-            video_type (str): Type of videos to search for.
-        Returns:
-            list: A list of dictionaries containing video information.
-        """
-        request = self.youtube.search().list(
-            q=query,
-            part="snippet",
-            maxResults=max_results,
-            order=order,
-            type="video",
-            videoDuration=video_duration,
-            videoType=video_type,
-        )
-        response = request.execute()
+# 2. Create a simple tool
+@tool
+def get_current_date():
+    """
+    Returns today's date in YYYY-MM-DD format.
+    """
+    return date.today().isoformat()
 
-        videos = []
-        for item in response.get("items", []):
-            video_info = {
-                "videoId": item["id"]["videoId"],
-                "title": item["snippet"]["title"],
-                "description": item["snippet"]["description"],
-                "channelTitle": item["snippet"]["channelTitle"],
-                "publishedAt": item["snippet"]["publishedAt"],
-            }
-            videos.append(video_info)
-
-        return videos
-
-    # Additional methods (get_video_details, get_channel_info, etc.) can be added here
-
-    def get_function_map(self):
-        """
-        Returns a dictionary mapping function names to their references.
-        """
-        return {name: func for name, func in vars(self.__class__).items() if isinstance(func, tuple)}
-
-    def call_method(self, function_call):
-        """
-        Calls a method based on the provided function call structure.
-        """
-        function_name = function_call.get("function")
-        params = function_call.get("params", {})
-        params["self"] = self
-
-        function_map = self.get_function_map()
-
-        if function_name not in function_map:
-            raise ValueError(f"Function '{function_name}' not found")
-
-        try:
-            return function_map[function_name][0](**params)
-        except Exception as e:
-            raise ValueError(f"Error calling function '{function_name}': {str(e)}")
-```
-
-This YouTube Data API tool demonstrates how to create a more complex tool with multiple methods, each decorated with `@tool`. The `get_function_map` and `call_method` functions allow for dynamic method calling, which can be useful when integrating with language models.
-
-## Using Tools in Prompt Jobs
-
-You can use tools within prompt jobs to extend the capabilities of your language model. Here's an example of how to integrate a tool into a prompt job:
-
-```python
-yt_api = YouTubeDataAPI(api_key)
-
-@prompt_job(id="search_videos", context=llmContext)
-def SearchVideos(id: str, context: LLMContext, prevResult: Any, query: str):
-    videos = yt_api.search_videos(query, max_results=5)
-    response = context.Prompt(Message("user", f"Summarize these video results: {videos}"))
-    return response.Run(stream=True).Messages[-1]
-```
-
-## Example Workflow
-
-This example demonstrates how to use TinyTune to orchestrate interactions with different language models and integrate custom tools:
-
-```python
-import os
-from tinytune import GPTContext, PerplexityContext, Pipeline, prompt_job, Message
-from youtube_tool import YouTubeDataAPI
-
-# Initialize contexts and tools
-context = GPTContext("gpt-4-0125-preview", os.getenv("OPENAI_KEY"))
-pContext = PerplexityContext("pplx-70b-online", os.getenv("PERPLEXITY_KEY"))
-yt_api = YouTubeDataAPI(os.getenv("YOUTUBE_API_KEY"))
-
-# Callback function for printing output
-def Callback(content):
-    print(content, end="" if content else "\n")
-
-context.OnGenerateCallback = Callback
-pContext.OnGenerateCallback = Callback
-
-# Define prompt job for searching YouTube videos
-@prompt_job(id="search_videos", context=pContext)
-def SearchVideos(id: str, context: PerplexityContext, prevResult: Any):
-    query = "Latest AI developments"
-    videos = yt_api.search_videos(query, max_results=5)
-    return (context.Prompt(Message("user", f"Summarize these AI video results: {videos}"))
+# 3. Define a prompt job that uses the tool
+@prompt_job(id="date_summarize", context=context)
+def DateSummarize(id: str, context: GPTContext, prevResult: any):
+    today = get_current_date()
+    return (context
+            .Prompt(Message("user", f"Today's date is {today}. Please summarize the main tech headlines."))
             .Run(stream=True)
             .Messages[-1])
 
-# Define prompt job for generating a report
-@prompt_job("generate_report", context)
-def GenerateReport(id: str, context: GPTContext, prevResult: Any):
-    return (context.Prompt(Message("user", f"Generate a brief report on the latest AI developments based on this summary: {prevResult.Content}"))
-            .Run(stream=True))
-
-# Create and run pipeline
+# 4. Create and run the pipeline
 pipeline = Pipeline(context)
-(pipeline.AddJob(SearchVideos)
-        .AddJob(GenerateReport)
-        .Run())
+pipeline.AddJob(DateSummarize)
+
+final_result = pipeline.Run()
+print(final_result.Content)  # Print the summary of today's tech headlines
+```
+## Function Calling
+
+Tools can be used with function calling by providing this system prompt:
+
+```
+You can call functions by responding with JSON:
+{
+    "function": "function_name",
+    "params": {
+        "param1": "value1"
+    }
+}
+
+Available functions:
+- get_weather(location: str): Gets current weather
+- search_data(query: str): Searches database
 ```
 
-This example showcases how to:
+## Key Classes & Decorators
 
-1. Set up different LLM contexts (GPT and Perplexity)
-2. Integrate a custom YouTube Data API tool
-3. Define prompt jobs that use both LLM contexts and custom tools
-4. Create a pipeline to search for videos, summarize results, and generate a report
+- **LLMContext**: Interface to a language model (prompting, running, saving messages).
+- **@prompt_job**: Decorates a function to define a prompt job.
+- **Pipeline**: Manages and executes a sequence of prompt jobs.
+- **@tool**: Converts a Python function into a callable tool for LLMs.
 
-## Getting Started
 
-1. Install TinyTune: `pip install tinytune`
-2. Import necessary components: `from tinytune import LLMContext, Pipeline, prompt_job, Message, tool`
-3. Set up your LLM context(s)
-4. Create custom tools using the `@tool` decorator
-5. Define your prompt jobs using the `@prompt_job` decorator
-6. Create a pipeline and add your jobs
-7. Run the pipeline to execute your workflow
+## Advanced Usage
 
-For more detailed information and advanced usage, please refer to the documentation.
+- Integrate multiple different LLM contexts (e.g., GPT for reasoning and another model for specialized tasks).
+- Add more complex tools (e.g., calling web APIs, databases, search engines).
+- Implement function calling, callbacks, and streaming to enhance interactivity and responsiveness.
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request on GitHub.
+
+## License
+
+TinyTune is licensed under the MIT License.
