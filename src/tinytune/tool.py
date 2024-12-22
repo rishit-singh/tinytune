@@ -4,7 +4,6 @@ import inspect
 from typing import Callable
 from tinytune.prompt import PromptJob
 
-
 def Parse(docString: str) -> dict:
     doc = {"title": "", "params": {}}
 
@@ -36,7 +35,7 @@ def Parse(docString: str) -> dict:
             elif key == "params":
                 hyphen = line.find("-")
 
-                if hyphen < 1:
+                if hyphen< 1:
                     print(key, innerKey, line)
                     doc[key][innerKey] += f"{line}\n"
 

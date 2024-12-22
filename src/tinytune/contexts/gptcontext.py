@@ -6,8 +6,6 @@ from typing import Callable, Any
 
 
 class GPTMessage(Message):
-    __slots__ = ("Role", "Content")
-
     def __init__(self, role: str, content: str):
         super().__init__(role, content)
 
@@ -39,7 +37,7 @@ class GPTContext(LLMContext[GPTMessage]):
 
         return self
 
-    def Prompt(self, message: GPTMessage):
+    def Prompt(self, message: GPTMessage | dict):
         self.MessageQueue.append(message)
 
         return self
@@ -52,8 +50,8 @@ class GPTContext(LLMContext[GPTMessage]):
 
             response = openai.chat.completions.create(
                 model=self.Model.Name,
-                messages=[message.ToDict() for message in self.Messages]
-                + [self.MessageQueue[self.QueuePointer].ToDict()],
+                messages=[dict(message) for message in self.Messages]
+                + [dict(self.MessageQueue[self.QueuePointer])],
                 temperature=0,
                 stream=stream,
             )
@@ -96,7 +94,7 @@ class O1Context(LLMContext[GPTMessage]):
     def Save(self, promptFile: str = "prompts.json") -> Any:
         try:
             with open(promptFile, "w") as fp:
-                json.dump([message.ToDict() for message in self.Messages], fp, indent=2)
+                json.dump([dict(message) for message in self.Messages], fp, indent=2)
 
         except:
             print("An error occured in saving messages.")
@@ -120,8 +118,8 @@ class O1Context(LLMContext[GPTMessage]):
 
             response = openai.chat.completions.create(
                 model=self.Model.Name,
-                messages=[message.ToDict() for message in self.Messages]
-                + [self.MessageQueue[self.QueuePointer].ToDict()],
+                messages=[dict(message) for message in self.Messages]
+                + [dict(self.MessageQueue[self.QueuePointer])],
             )
 
             self.Messages.append(GPTMessage("assistant", ""))

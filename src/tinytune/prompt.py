@@ -45,8 +45,8 @@ class PromptJob[MessageType: Message]:
 
         l = len(args)
 
-        if (len(args) >= 1):
-            if (len(args) >= 2):
+        if (l >= 1):
+            if (l >= 2):
                 ar.extend(args[0]) # add args from previous one
             for key in args[1]:
                     kw[key] = args[1][key]
@@ -77,11 +77,12 @@ class PromptJob[MessageType: Message]:
         for key in kwargs:
             kwCallArgs[key] = kwargs[key]
 
-        params = inspect.signature(self.Callback).parameters
+        has_valid_kwargs = any(key in inspect.signature(self.Callback).parameters
+                                for key in kwCallArgs)
 
-        for key in args[1]:
-            if (key in params):
-                return self.Callback(*callArgs, **kwCallArgs)
+    # Only use keyword arguments if we have valid ones
+        if has_valid_kwargs:
+            return self.Callback(*callArgs, **kwCallArgs)
 
         return self.Callback(*callArgs)
 
@@ -90,7 +91,7 @@ class PromptJob[MessageType: Message]:
         Parameters:
         - args (Any): Arguments to the job.
         - kwargs (Any): Keyword arguments to the job.
-8
+
         Returns:
         - Any: Result of calling the job.
         """

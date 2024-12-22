@@ -7,8 +7,6 @@ class Message:
     """
     Represents a message with a role and content.
     """
-    __slots__ = ("Role", "Content")
-
     def __init__(self, role: str, content: str):
         """
         Initialize a Message object.
@@ -31,6 +29,10 @@ class Message:
             "role": self.Role,
             "content": self.Content
         }
+
+    def __iter__(self):
+        yield from [ (item[0].lower(), item[1]) for item in self.__dict__.items() ]
+
 
 class Model:
     """
@@ -58,14 +60,14 @@ class LLMContext[MessageType]:
         Parameters:
         - model (Model): The model associated with the context.
         """
-        self.Messages: list[MessageType] = []
-        self.MessageQueue: list[MessageType] = []
+        self.Messages: list[MessageType | dict] = []
+        self.MessageQueue: list[MessageType | dict] = []
         self.Model: Model = model
         self.QueuePointer: int = 0
         self.CallbackStack: dict[int, list[Callable]] = {}
 
 
-    def Top(self) -> MessageType:
+    def Top(self) -> MessageType | dict:
         """
         Get the top message in the context stack
         Returns:
@@ -73,7 +75,7 @@ class LLMContext[MessageType]:
         """
         return self.Messages[len(self.Messages) - 1]
 
-    def Prompt(self, message: MessageType) -> Any:
+    def Prompt(self, message: MessageType | dict) -> Any:
         """
         Add a message to the message queue.
 
@@ -98,7 +100,7 @@ class LLMContext[MessageType]:
         """
         try:
             with open(promptFile, "w") as fp:
-                json.dump([ message.ToDict() for message in self.Messages ], fp, indent=2)
+                json.dump([ message.ToDict() if type(message) == MessageType else message for message in self.Messages ], fp, indent=2)
 
         except Exception as e:
             print(f"An error occurred in saving messages: {e.args[0]}")
@@ -141,6 +143,7 @@ class LLMContext[MessageType]:
 
                 for callback in callbacks:
                     result = callback(self, result)
+
                 self.CallbackStack.pop(self.QueuePointer)
 
             self.Messages.append(result)

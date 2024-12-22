@@ -11,8 +11,11 @@ class GPTMessage(Message):
     def __init__(self, role: str, content: str):
         super().__init__(role, content)
 
+    def __iter__(self):
+        yield from self.__dict__.items()
 
-class GPTContext(LLMContext[GPTMessage]):
+
+class GPTContext(LLMContext[GPTMessage | dict]):
     def __init__(self, model: str, apiKey: str, promptFile: str | None = None):
         super().__init__(Model("openai", model))
 

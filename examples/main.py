@@ -1,13 +1,14 @@
 import os
 import sys
 
+
 sys.path.append("../src")
 sys.path.append("../")
 
 from dotenv import load_dotenv
 from typing import Any
 from tinytune.llmcontext import LLMContext
-from examples.gptcontext import GPTContext, Model
+from tinytune.contexts.gptcontext import GPTContext, Model, GPTMessage
 from examples.ollama_context import OllamaContext, OllamaMessage
 from tinytune.pipeline import Pipeline
 from tinytune.prompt import prompt_job, PromptJob
@@ -16,7 +17,11 @@ from PerplexityContext import PerplexityContext, PerplexityMessage
 
 load_dotenv()
 
-gptContext = OllamaContext(f"https://api.cloudflare.com/client/v4/accounts/{os.getenv("CLOUDFLARE_ID")}/ai/v1", "@cf/meta/llama-3.1-70b-instruct", str(os.getenv("CLOUDFLARE_KEY")))
+# gptContext = OllamaContext(f"https://api.cloudflare.com/client/v4/accounts/{os.getenv("CLOUDFLARE_ID")}/ai/v1", "@cf/meta/llama-3.1-70b-instruct", str(os.getenv("CLOUDFLARE_KEY")))
+
+print(os.getenv("OPENAI_KEY"))
+gptContext = GPTContext(model="gpt-4o-mini", apiKey=os.getenv("OPENAI_KEY"))
+
 
 def Callback(content):
     if content != None:
@@ -26,6 +31,7 @@ def Callback(content):
 
 
 gptContext.OnGenerate = Callback
+
 
 def Main():
     gptContext = OllamaContext("http://localhost:11434/v1/", "llama3.2:1b")
@@ -80,20 +86,28 @@ def Test(id: str, context: OllamaContext, prevResult: Any, param: str):
 
 
 @prompt_job(id="Chat", context=gptContext)
-def Chat(id, context: OllamaContext, prevResult: Any, *args):
+def Chat(id, context: GPTContext, prevResult: Any, *args):
     Running: bool = True
 
     while Running:
         print()
 
-        (
-            context.Prompt(OllamaMessage("user", input("> "))).Run(
-                stream=True
-            )
-        )
+        (context.Prompt({"role": "user", "content": input("> ")}).Run(stream=True))
 
 
 # Pipeline(gptContext).AddJob(Test, param="random").Run(stream=True)
-
-Chat()
+gptContext.Prompt(
+    {
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "What's in this image?"},
+            {
+                "type": "image_url",
+                "image_url": {
+                    "url": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg",
+                },
+            },
+        ],
+    }
+).Run(stream=True)
 # Main()
