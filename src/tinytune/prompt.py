@@ -20,96 +20,70 @@ class Prompt:
         self.Function: list[FunctionType] = functions
 
 
+
 class PromptJob[MessageType: Message]:
     """
     Represents a job to execute prompts within a context.
     """
     def __init__(self, callback, id: str, llm: LLMContext[MessageType], prevResult: list[Any], *args, **kwargs):
-        """
-        Initialize a PromptJob object.
-
-        Parameters:
-        - id (str): Identifier for the job.
-        - llm (LLMContext[MessageType]): The language model context.
-        """
-
         self.ID: str = id
         self.__name__ = self.ID
-
         self.LLM: LLMContext[MessageType] = llm
         self.PrevResult: list[Any] = prevResult
         self.Callback: Callable[..., None] = callback
 
-        kw = kwargs
+        # Handle initialization arguments
         ar = []
+        kw = dict(kwargs)  # Create a copy of kwargs
 
-        l = len(args)
-
-        if (l >= 1):
-            if (l >= 2):
-                ar.extend(args[0]) # add args from previous one
-            for key in args[1]:
+        if len(args) >= 1:
+            if len(args) >= 2:
+                ar.extend(args[0])  # add args from previous one
+                for key in args[1]:
                     kw[key] = args[1][key]
             else:
                 ar.extend(args[0])
 
         self.Args = (ar, kw)
 
-    def Run(self, *args: Any) -> Any:
+    def Run(self, args: list | None = None, kwargs: dict | None = None) -> Any:
         """
         Run the prompt job.
-
-        Parameters:
-        - args (Any): Arguments to the job.
-        - kwargs (Any): Keyword arguments to the job.
-
-        Returns:
-        - Any: Result of running the job.
         """
+        # Start with required params
+        callArgs = [self.ID, self.LLM, self.PrevResult]
 
-        callArgs = list([ self.ID, self.LLM, self.PrevResult ]) # required params
-        callArgs.extend(args[0])
+        # Add runtime positional args first
+        if args:
+            callArgs.extend(args)
+
+        # Add initialization positional args
         callArgs.extend(self.Args[0])
 
-        kwCallArgs = args[1]
-        kwargs = self.Args[1]
+        # Handle keyword arguments
+        kwCallArgs = {}
+        # Start with initialization kwargs
+        kwCallArgs.update(self.Args[1])
+        # Override with runtime kwargs
+        if kwargs:
+            kwCallArgs.update(kwargs)
 
-        for key in kwargs:
-            kwCallArgs[key] = kwargs[key]
+        # Filter kwargs based on function signature
+        params = inspect.signature(self.Callback).parameters
+        filtered_kwargs = {k: v for k, v in kwCallArgs.items() if k in params}
 
-        has_valid_kwargs = any(key in inspect.signature(self.Callback).parameters
-                                for key in kwCallArgs)
-
-    # Only use keyword arguments if we have valid ones
-        if has_valid_kwargs:
-            return self.Callback(*callArgs, **kwCallArgs)
-
-        return self.Callback(*callArgs)
+        return self.Callback(*callArgs, **filtered_kwargs)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Parameters:
-        - args (Any): Arguments to the job.
-        - kwargs (Any): Keyword arguments to the job.
-
-        Returns:
-        - Any: Result of calling the job.
+        Called when the job is invoked like a function.
         """
-
-        return self.Run(args, kwargs)
+        return self.Run(args=list(args), kwargs=kwargs)
 
 def prompt_job[MessageType](id: str | None = None, context: LLMContext | None = None, *args, **kwargs):
     """
     Decorator for composing a function into a PromptJob.
-
-    Parameters:
-    - id (str, optional): Identifier for the job.
-    - context (LLMContext, optional): Language model context.
-    - prevResult (Any, optional): Previous result
-    Returns:
-    - Callable: Decorated function.
     """
     def wrapper(func: Callable[..., Any]):
         return PromptJob[MessageType](func, id, context, None, args, kwargs)
-
     return wrapper

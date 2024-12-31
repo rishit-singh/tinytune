@@ -74,7 +74,7 @@ class Pipeline[MessageType](PromptJob[MessageType]):
             try:
                 job.PrevResult = prevResult
 
-                prevResult = job()
+                prevResult = job(args, kwargs)
 
                 if job.ID not in self.Results:
                     self.Results[job.ID] = []
